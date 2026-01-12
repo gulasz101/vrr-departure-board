@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black">
     <title>Departures</title>
@@ -27,8 +27,11 @@
         }
 
         header {
+            display: -webkit-flex;
             display: flex;
+            -webkit-justify-content: space-between;
             justify-content: space-between;
+            -webkit-align-items: center;
             align-items: center;
             margin-bottom: 24px;
             padding-bottom: 16px;
@@ -43,7 +46,6 @@
         .clock {
             font-size: 2rem;
             font-weight: 300;
-            font-variant-numeric: tabular-nums;
         }
 
         .status {
@@ -56,8 +58,10 @@
         .status.error { color: #f87171; }
 
         .stops-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            display: -webkit-flex;
+            display: flex;
+            -webkit-flex-wrap: wrap;
+            flex-wrap: wrap;
             gap: 24px;
         }
 
@@ -65,11 +69,17 @@
             background: #0f0f1a;
             border-radius: 16px;
             padding: 16px;
+            -webkit-flex: 1 1 350px;
+            flex: 1 1 350px;
+            min-width: 300px;
         }
 
         .stop-header {
+            display: -webkit-flex;
             display: flex;
+            -webkit-justify-content: space-between;
             justify-content: space-between;
+            -webkit-align-items: center;
             align-items: center;
             margin-bottom: 16px;
             padding-bottom: 12px;
@@ -88,21 +98,29 @@
         }
 
         .departures {
+            display: -webkit-flex;
             display: flex;
+            -webkit-flex-direction: column;
             flex-direction: column;
-            gap: 10px;
         }
 
         .departure {
-            display: grid;
-            grid-template-columns: 60px 1fr auto;
+            display: -webkit-flex;
+            display: flex;
+            -webkit-align-items: center;
             align-items: center;
-            gap: 12px;
             padding: 12px;
             background: #16213e;
             border-radius: 10px;
-            border-left: 4px solid var(--line-color, #666);
+            border-left: 4px solid #666;
+            margin-bottom: 10px;
         }
+
+        .departure.line-u { border-left-color: #0063af; }
+        .departure.line-s { border-left-color: #008d4f; }
+        .departure.line-str { border-left-color: #be1622; }
+        .departure.line-bus { border-left-color: #7b2d8e; }
+        .departure.line-re { border-left-color: #ec1c24; }
 
         .line {
             font-size: 1.2rem;
@@ -110,8 +128,22 @@
             text-align: center;
             padding: 6px;
             border-radius: 6px;
-            background: var(--line-color, #666);
-            color: var(--line-text, #fff);
+            background: #666;
+            color: #fff;
+            min-width: 50px;
+            margin-right: 12px;
+        }
+
+        .departure.line-u .line { background: #0063af; }
+        .departure.line-s .line { background: #008d4f; }
+        .departure.line-str .line { background: #be1622; }
+        .departure.line-bus .line { background: #7b2d8e; }
+        .departure.line-re .line { background: #ec1c24; }
+
+        .dest-info {
+            -webkit-flex: 1;
+            flex: 1;
+            min-width: 0;
         }
 
         .destination {
@@ -129,21 +161,16 @@
 
         .time-info {
             text-align: right;
+            margin-left: 12px;
         }
 
         .minutes {
             font-size: 1.5rem;
             font-weight: 700;
-            font-variant-numeric: tabular-nums;
         }
 
         .minutes.soon { color: #fbbf24; }
-        .minutes.now { color: #4ade80; animation: pulse 1s infinite; }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.6; }
-        }
+        .minutes.now { color: #4ade80; }
 
         .scheduled {
             font-size: 0.75rem;
@@ -171,8 +198,11 @@
             border-radius: 50%;
             width: 48px;
             height: 48px;
+            display: -webkit-flex;
             display: flex;
+            -webkit-align-items: center;
             align-items: center;
+            -webkit-justify-content: center;
             justify-content: center;
             cursor: pointer;
             border: none;
@@ -181,21 +211,27 @@
             z-index: 100;
         }
 
-        .settings-btn:hover { background: #1f2b4a; color: #fff; }
-
         .modal {
             display: none;
             position: fixed;
-            inset: 0;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
             background: rgba(0,0,0,0.85);
+            -webkit-align-items: flex-start;
             align-items: flex-start;
+            -webkit-justify-content: center;
             justify-content: center;
             padding: 20px;
             overflow-y: auto;
             z-index: 200;
         }
 
-        .modal.open { display: flex; }
+        .modal.open { 
+            display: -webkit-flex;
+            display: flex; 
+        }
 
         .modal-content {
             background: #16213e;
@@ -227,19 +263,14 @@
             font-size: 0.9rem;
         }
 
-        .form-group input, .form-group select {
+        .form-group input {
             width: 100%;
             padding: 12px;
             border: 1px solid #333;
             border-radius: 8px;
             background: #1a1a2e;
             color: #fff;
-            font-size: 1rem;
-        }
-
-        .form-group input:focus {
-            outline: none;
-            border-color: #3b82f6;
+            font-size: 16px; /* Prevents zoom on iOS */
         }
 
         .stop-config {
@@ -262,7 +293,7 @@
             border-radius: 50%;
             cursor: pointer;
             font-size: 1rem;
-            line-height: 1;
+            line-height: 24px;
         }
 
         .search-results {
@@ -278,9 +309,6 @@
             cursor: pointer;
             border-bottom: 1px solid #333;
         }
-
-        .search-result:hover { background: #252550; }
-        .search-result:last-child { border-bottom: none; }
 
         .search-result small {
             color: #666;
@@ -314,27 +342,27 @@
         }
 
         .btn-row {
+            display: -webkit-flex;
             display: flex;
+            -webkit-justify-content: flex-end;
             justify-content: flex-end;
             margin-top: 20px;
-            gap: 8px;
         }
-
-        /* Line colors */
-        .line-u { --line-color: #0063af; }
-        .line-s { --line-color: #008d4f; }
-        .line-str { --line-color: #be1622; }
-        .line-bus { --line-color: #7b2d8e; }
-        .line-re { --line-color: #ec1c24; }
 
         .empty-state {
             text-align: center;
             padding: 60px 20px;
             color: #666;
+            width: 100%;
         }
 
         .empty-state p {
             margin-bottom: 16px;
+        }
+
+        .stop-info {
+            font-size: 0.8rem;
+            color: #666;
         }
     </style>
 </head>
@@ -383,20 +411,37 @@
     </div>
 
     <script>
+        // Polyfill for padStart
+        if (!String.prototype.padStart) {
+            String.prototype.padStart = function(len, str) {
+                var s = this;
+                str = str || ' ';
+                while (s.length < len) s = str + s;
+                return s;
+            };
+        }
+
         // State
-        let config = {
+        var config = {
             stops: [],
             refreshInterval: 30,
             maxDepartures: 6
         };
-        let refreshTimer = null;
-        let searchTimeouts = {};
+        var refreshTimer = null;
+        var searchTimeouts = {};
 
         // Load saved config
         function loadConfig() {
-            const saved = localStorage.getItem('departures_config_v3');
-            if (saved) {
-                config = { ...config, ...JSON.parse(saved) };
+            try {
+                var saved = localStorage.getItem('departures_config_v3');
+                if (saved) {
+                    var parsed = JSON.parse(saved);
+                    config.stops = parsed.stops || [];
+                    config.refreshInterval = parsed.refreshInterval || 30;
+                    config.maxDepartures = parsed.maxDepartures || 6;
+                }
+            } catch (e) {
+                console.error('Load config error:', e);
             }
             document.getElementById('refreshInterval').value = config.refreshInterval;
             document.getElementById('maxDepartures').value = config.maxDepartures;
@@ -409,14 +454,17 @@
             
             // Gather stops from config UI
             config.stops = [];
-            document.querySelectorAll('.stop-config').forEach((el, idx) => {
-                const stopId = el.dataset.stopId;
-                const stopName = el.dataset.stopName;
-                const label = el.querySelector('.stop-label-input')?.value || stopName;
+            var stopEls = document.querySelectorAll('.stop-config');
+            for (var i = 0; i < stopEls.length; i++) {
+                var el = stopEls[i];
+                var stopId = el.getAttribute('data-stop-id');
+                var stopName = el.getAttribute('data-stop-name');
+                var labelInput = el.querySelector('.stop-label-input');
+                var label = labelInput ? labelInput.value : stopName;
                 if (stopId && stopName) {
-                    config.stops.push({ id: stopId, name: stopName, label: label });
+                    config.stops.push({ id: stopId, name: stopName, label: label || stopName });
                 }
-            });
+            }
 
             localStorage.setItem('departures_config_v3', JSON.stringify(config));
             closeModal();
@@ -427,111 +475,130 @@
 
         // Clock
         function updateClock() {
-            const now = new Date();
-            document.getElementById('clock').textContent = 
-                now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+            var now = new Date();
+            var h = String(now.getHours()).padStart(2, '0');
+            var m = String(now.getMinutes()).padStart(2, '0');
+            document.getElementById('clock').textContent = h + ':' + m;
         }
 
         // Search stops via our proxy
-        async function searchStops(query, resultsContainerId) {
+        function searchStops(query, resultsContainerId) {
+            var container = document.getElementById(resultsContainerId);
+            if (!container) return;
+
             if (query.length < 3) {
-                document.getElementById(resultsContainerId).innerHTML = 
-                    '<div class="search-result"><small>Type at least 3 characters...</small></div>';
+                container.innerHTML = '<div class="search-result"><small>Type at least 3 characters...</small></div>';
                 return;
             }
 
-            document.getElementById(resultsContainerId).innerHTML = 
-                '<div class="search-result"><small>Searching...</small></div>';
+            container.innerHTML = '<div class="search-result"><small>Searching...</small></div>';
 
-            try {
-                const res = await fetch(`/api/stops?q=${encodeURIComponent(query)}`);
-                const data = await res.json();
-                
-                let stops = [];
-                
-                // Parse the response - EFA has different formats
-                if (data.stopFinder?.points) {
-                    const points = data.stopFinder.points;
-                    if (Array.isArray(points)) {
-                        stops = points;
-                    } else if (points.point) {
-                        stops = Array.isArray(points.point) ? points.point : [points.point];
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', '/api/stops?q=' + encodeURIComponent(query), true);
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4) {
+                    if (xhr.status === 200) {
+                        try {
+                            var data = JSON.parse(xhr.responseText);
+                            var stops = [];
+                            
+                            if (data.stopFinder && data.stopFinder.points) {
+                                var points = data.stopFinder.points;
+                                if (Array.isArray(points)) {
+                                    stops = points;
+                                } else if (points.point) {
+                                    stops = Array.isArray(points.point) ? points.point : [points.point];
+                                }
+                            }
+
+                            // Filter to actual stops
+                            var filtered = [];
+                            for (var i = 0; i < stops.length && filtered.length < 10; i++) {
+                                var s = stops[i];
+                                if (s.type === 'stop' || s.anyType === 'stop') {
+                                    filtered.push(s);
+                                }
+                            }
+
+                            if (filtered.length === 0) {
+                                container.innerHTML = '<div class="search-result"><small>No stops found.</small></div>';
+                                return;
+                            }
+
+                            var html = '';
+                            for (var j = 0; j < filtered.length; j++) {
+                                var stop = filtered[j];
+                                var name = stop.name || stop.object || 'Unknown';
+                                var id = stop.stateless || (stop.ref && stop.ref.id) || stop.id || '';
+                                var locality = (stop.ref && stop.ref.place) || stop.locality || '';
+                                html += '<div class="search-result" data-stop-id="' + escapeAttr(id) + '" data-stop-name="' + escapeAttr(name) + '">';
+                                html += '<strong>' + escapeHtml(name) + '</strong>';
+                                if (locality) html += '<br><small>' + escapeHtml(locality) + '</small>';
+                                html += '</div>';
+                            }
+                            container.innerHTML = html;
+                        } catch (e) {
+                            container.innerHTML = '<div class="search-result"><small>Parse error</small></div>';
+                        }
+                    } else {
+                        container.innerHTML = '<div class="search-result"><small>Error: ' + xhr.status + '</small></div>';
                     }
                 }
-
-                if (stops.length === 0) {
-                    document.getElementById(resultsContainerId).innerHTML = 
-                        '<div class="search-result"><small>No stops found. Try a different search.</small></div>';
-                    return;
-                }
-
-                // Filter to actual stops and render
-                const filteredStops = stops
-                    .filter(s => s.type === 'stop' || s.anyType === 'stop')
-                    .slice(0, 10);
-
-                if (filteredStops.length === 0) {
-                    document.getElementById(resultsContainerId).innerHTML = 
-                        '<div class="search-result"><small>No stops found. Try a different search.</small></div>';
-                    return;
-                }
-
-                const html = filteredStops.map(stop => {
-                    const name = stop.name || stop.object || 'Unknown';
-                    const id = stop.stateless || stop.ref?.id || stop.id || '';
-                    const locality = stop.ref?.place || stop.locality || '';
-                    return `<div class="search-result" data-stop-id="${escapeAttr(id)}" data-stop-name="${escapeAttr(name)}">
-                        <strong>${escapeHtml(name)}</strong>
-                        ${locality ? `<br><small>${escapeHtml(locality)}</small>` : ''}
-                    </div>`;
-                }).join('');
-
-                document.getElementById(resultsContainerId).innerHTML = html;
-
-            } catch (err) {
-                console.error('Search error:', err);
-                document.getElementById(resultsContainerId).innerHTML = 
-                    `<div class="search-result"><small>Error: ${escapeHtml(err.message)}</small></div>`;
-            }
+            };
+            xhr.send();
         }
 
-        // Fetch departures for a stop via our proxy
-        async function fetchDepartures(stop) {
-            const res = await fetch(`/api/departures?stop=${encodeURIComponent(stop.id || stop.name)}`);
-            const data = await res.json();
-            return parseDepartures(data);
+        // Fetch departures for a stop
+        function fetchDepartures(stop, callback) {
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', '/api/departures?stop=' + encodeURIComponent(stop.id || stop.name), true);
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4) {
+                    if (xhr.status === 200) {
+                        try {
+                            var data = JSON.parse(xhr.responseText);
+                            callback(null, parseDepartures(data));
+                        } catch (e) {
+                            callback(e, []);
+                        }
+                    } else {
+                        callback(new Error('HTTP ' + xhr.status), []);
+                    }
+                }
+            };
+            xhr.send();
         }
 
         // Parse EFA departure response
         function parseDepartures(data) {
-            const departures = [];
-            
-            let rawDeps = data.departureList || [];
+            var departures = [];
+            var rawDeps = data.departureList || [];
             if (!Array.isArray(rawDeps)) {
                 rawDeps = rawDeps ? [rawDeps] : [];
             }
 
-            for (const dep of rawDeps) {
+            for (var i = 0; i < rawDeps.length; i++) {
                 try {
-                    const servingLine = dep.servingLine || {};
-                    const dateTime = dep.dateTime || {};
-                    const realDateTime = dep.realDateTime || dateTime;
+                    var dep = rawDeps[i];
+                    var servingLine = dep.servingLine || {};
+                    var dateTime = dep.dateTime || {};
+                    var realDateTime = dep.realDateTime || dateTime;
                     
-                    const line = servingLine.number || servingLine.symbol || servingLine.name || '?';
-                    const destination = servingLine.direction || servingLine.destName || 'Unknown';
-                    const platform = dep.platform || dep.pointName || '';
-                    const product = servingLine.motType || servingLine.code || 0;
+                    var line = servingLine.number || servingLine.symbol || servingLine.name || '?';
+                    var destination = servingLine.direction || servingLine.destName || 'Unknown';
+                    var platform = dep.platform || dep.pointName || '';
+                    var product = servingLine.motType || servingLine.code || 0;
                     
-                    const schedHour = parseInt(dateTime.hour) || 0;
-                    const schedMin = parseInt(dateTime.minute) || 0;
-                    const realHour = parseInt(realDateTime.hour) || schedHour;
-                    const realMin = parseInt(realDateTime.minute) || schedMin;
+                    var schedHour = parseInt(dateTime.hour) || 0;
+                    var schedMin = parseInt(dateTime.minute) || 0;
+                    var realHour = parseInt(realDateTime.hour) || schedHour;
+                    var realMin = parseInt(realDateTime.minute) || schedMin;
                     
-                    const now = new Date();
-                    const schedDate = new Date(now);
+                    var now = new Date();
+                    var schedDate = new Date(now.getTime());
                     schedDate.setHours(schedHour, schedMin, 0, 0);
                     
-                    const realDate = new Date(now);
+                    var realDate = new Date(now.getTime());
                     realDate.setHours(realHour, realMin, 0, 0);
                     
                     if (schedDate < now && (now - schedDate) > 12 * 60 * 60 * 1000) {
@@ -541,61 +608,77 @@
                         realDate.setDate(realDate.getDate() + 1);
                     }
                     
-                    const minutes = Math.round((realDate - now) / 60000);
-                    const delay = Math.round((realDate - schedDate) / 60000);
+                    var minutes = Math.round((realDate - now) / 60000);
+                    var delay = Math.round((realDate - schedDate) / 60000);
                     
                     if (minutes >= -1) {
                         departures.push({
-                            line,
-                            destination,
-                            platform,
-                            product,
-                            minutes,
+                            line: line,
+                            destination: destination,
+                            platform: platform,
+                            product: product,
+                            minutes: minutes,
                             delay: delay > 0 ? delay : 0,
-                            scheduledTime: `${String(schedHour).padStart(2, '0')}:${String(schedMin).padStart(2, '0')}`
+                            scheduledTime: String(schedHour).padStart(2, '0') + ':' + String(schedMin).padStart(2, '0')
                         });
                     }
                 } catch (e) {
-                    console.error('Parse error for departure:', e, dep);
+                    console.error('Parse error:', e);
                 }
             }
 
-            return departures.sort((a, b) => a.minutes - b.minutes);
+            departures.sort(function(a, b) { return a.minutes - b.minutes; });
+            return departures;
         }
 
         // Fetch all stops
-        async function fetchAllDepartures() {
+        function fetchAllDepartures() {
             if (config.stops.length === 0) {
                 setStatus('No stops configured', '');
                 return;
             }
 
             setStatus('Updating...', '');
+            var completed = 0;
             
-            for (const stop of config.stops) {
-                const container = document.querySelector(`[data-stop-container="${stop.id}"] .departures`);
-                const statusEl = document.querySelector(`[data-stop-container="${stop.id}"] .stop-status`);
-                
-                if (!container) continue;
+            for (var i = 0; i < config.stops.length; i++) {
+                (function(stop) {
+                    var container = document.querySelector('[data-stop-container="' + stop.id + '"] .departures');
+                    var statusEl = document.querySelector('[data-stop-container="' + stop.id + '"] .stop-status');
+                    
+                    if (!container) {
+                        completed++;
+                        return;
+                    }
 
-                try {
-                    const departures = await fetchDepartures(stop);
-                    renderDepartures(container, departures);
-                    if (statusEl) {
-                        statusEl.textContent = `Updated: ${new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`;
-                        statusEl.style.color = '#4ade80';
-                    }
-                } catch (err) {
-                    console.error(`Error fetching ${stop.name}:`, err);
-                    container.innerHTML = `<div class="error-msg">Error loading data<br><small>${escapeHtml(err.message)}</small></div>`;
-                    if (statusEl) {
-                        statusEl.textContent = 'Error';
-                        statusEl.style.color = '#f87171';
-                    }
-                }
+                    fetchDepartures(stop, function(err, departures) {
+                        completed++;
+                        if (err) {
+                            container.innerHTML = '<div class="error-msg">Error loading data</div>';
+                            if (statusEl) {
+                                statusEl.textContent = 'Error';
+                                statusEl.style.color = '#f87171';
+                            }
+                        } else {
+                            renderDepartures(container, departures);
+                            if (statusEl) {
+                                var now = new Date();
+                                var h = String(now.getHours()).padStart(2, '0');
+                                var m = String(now.getMinutes()).padStart(2, '0');
+                                statusEl.textContent = 'Updated: ' + h + ':' + m;
+                                statusEl.style.color = '#4ade80';
+                            }
+                        }
+                        
+                        if (completed === config.stops.length) {
+                            var now = new Date();
+                            var h = String(now.getHours()).padStart(2, '0');
+                            var m = String(now.getMinutes()).padStart(2, '0');
+                            setStatus('Last update: ' + h + ':' + m, 'online');
+                        }
+                    });
+                })(config.stops[i]);
             }
-
-            setStatus(`Last update: ${new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`, 'online');
         }
 
         // Render departures for a stop
@@ -605,105 +688,101 @@
                 return;
             }
 
-            const html = departures.slice(0, config.maxDepartures).map(dep => {
-                let minuteClass = '';
+            var html = '';
+            var count = Math.min(departures.length, config.maxDepartures);
+            
+            for (var i = 0; i < count; i++) {
+                var dep = departures[i];
+                var minuteClass = '';
                 if (dep.minutes <= 0) minuteClass = 'now';
                 else if (dep.minutes <= 3) minuteClass = 'soon';
 
-                let lineClass = 'line-bus';
-                const lineLower = dep.line.toLowerCase();
-                const product = dep.product;
+                var lineClass = 'line-bus';
+                var lineLower = dep.line.toLowerCase();
+                var product = dep.product;
                 
-                if (lineLower.startsWith('u') || product === 2) lineClass = 'line-u';
-                else if (lineLower.startsWith('s') || product === 1) lineClass = 'line-s';
+                if (lineLower.indexOf('u') === 0 || product === 2) lineClass = 'line-u';
+                else if (lineLower.indexOf('s') === 0 || product === 1) lineClass = 'line-s';
                 else if (product === 4 || product === 5) lineClass = 'line-str';
-                else if (lineLower.startsWith('re') || lineLower.startsWith('rb') || product === 0) lineClass = 'line-re';
+                else if (lineLower.indexOf('re') === 0 || lineLower.indexOf('rb') === 0 || product === 0) lineClass = 'line-re';
 
-                return `
-                    <div class="departure ${lineClass}">
-                        <div class="line">${escapeHtml(dep.line)}</div>
-                        <div>
-                            <div class="destination">${escapeHtml(dep.destination)}</div>
-                            ${dep.platform ? `<div class="platform">Platform ${escapeHtml(dep.platform)}</div>` : ''}
-                        </div>
-                        <div class="time-info">
-                            <div class="minutes ${minuteClass}">${dep.minutes <= 0 ? 'now' : dep.minutes + ' min'}</div>
-                            <div class="scheduled">${dep.scheduledTime}</div>
-                            ${dep.delay > 0 ? `<div class="delay">+${dep.delay} min</div>` : ''}
-                        </div>
-                    </div>
-                `;
-            }).join('');
+                html += '<div class="departure ' + lineClass + '">';
+                html += '<div class="line">' + escapeHtml(dep.line) + '</div>';
+                html += '<div class="dest-info">';
+                html += '<div class="destination">' + escapeHtml(dep.destination) + '</div>';
+                if (dep.platform) html += '<div class="platform">Platform ' + escapeHtml(dep.platform) + '</div>';
+                html += '</div>';
+                html += '<div class="time-info">';
+                html += '<div class="minutes ' + minuteClass + '">' + (dep.minutes <= 0 ? 'now' : dep.minutes + ' min') + '</div>';
+                html += '<div class="scheduled">' + dep.scheduledTime + '</div>';
+                if (dep.delay > 0) html += '<div class="delay">+' + dep.delay + ' min</div>';
+                html += '</div>';
+                html += '</div>';
+            }
 
             container.innerHTML = html;
         }
 
         // Render stops grid
         function renderStopsGrid() {
-            const grid = document.getElementById('stopsGrid');
+            var grid = document.getElementById('stopsGrid');
             
             if (config.stops.length === 0) {
-                grid.innerHTML = `
-                    <div class="empty-state">
-                        <p>No stops configured yet.</p>
-                        <button class="btn btn-primary" onclick="openModal()">Add a Stop</button>
-                    </div>
-                `;
+                grid.innerHTML = '<div class="empty-state"><p>No stops configured yet.</p><button class="btn btn-primary" onclick="openModal()">Add a Stop</button></div>';
                 return;
             }
 
-            grid.innerHTML = config.stops.map(stop => `
-                <div class="stop-section" data-stop-container="${escapeAttr(stop.id)}">
-                    <div class="stop-header">
-                        <div class="stop-name">${escapeHtml(stop.label || stop.name)}</div>
-                        <div class="stop-status">Loading...</div>
-                    </div>
-                    <div class="departures">
-                        <div class="loading">Loading departures...</div>
-                    </div>
-                </div>
-            `).join('');
+            var html = '';
+            for (var i = 0; i < config.stops.length; i++) {
+                var stop = config.stops[i];
+                html += '<div class="stop-section" data-stop-container="' + escapeAttr(stop.id) + '">';
+                html += '<div class="stop-header">';
+                html += '<div class="stop-name">' + escapeHtml(stop.label || stop.name) + '</div>';
+                html += '<div class="stop-status">Loading...</div>';
+                html += '</div>';
+                html += '<div class="departures"><div class="loading">Loading departures...</div></div>';
+                html += '</div>';
+            }
+            grid.innerHTML = html;
         }
 
         // Render stops config in modal
         function renderStopsConfig() {
-            const container = document.getElementById('stopsConfig');
+            var container = document.getElementById('stopsConfig');
             
             if (config.stops.length === 0) {
                 container.innerHTML = '<p style="color: #888; margin-bottom: 12px;">No stops added yet.</p>';
                 return;
             }
 
-            container.innerHTML = config.stops.map((stop, idx) => `
-                <div class="stop-config" data-stop-id="${escapeAttr(stop.id)}" data-stop-name="${escapeAttr(stop.name)}">
-                    <button class="remove-btn" onclick="removeStopConfig(${idx})">×</button>
-                    <div class="form-group">
-                        <label>Display label</label>
-                        <input type="text" class="stop-label-input" value="${escapeAttr(stop.label || stop.name)}" placeholder="Custom name">
-                    </div>
-                    <div style="font-size: 0.8rem; color: #666;">
-                        Stop: ${escapeHtml(stop.name)}<br>
-                        ID: ${escapeHtml(stop.id)}
-                    </div>
-                </div>
-            `).join('');
+            var html = '';
+            for (var i = 0; i < config.stops.length; i++) {
+                var stop = config.stops[i];
+                html += '<div class="stop-config" data-stop-id="' + escapeAttr(stop.id) + '" data-stop-name="' + escapeAttr(stop.name) + '">';
+                html += '<button class="remove-btn" onclick="removeStopConfig(' + i + ')">×</button>';
+                html += '<div class="form-group">';
+                html += '<label>Display label</label>';
+                html += '<input type="text" class="stop-label-input" value="' + escapeAttr(stop.label || stop.name) + '" placeholder="Custom name">';
+                html += '</div>';
+                html += '<div class="stop-info">Stop: ' + escapeHtml(stop.name) + '<br>ID: ' + escapeHtml(stop.id) + '</div>';
+                html += '</div>';
+            }
+            container.innerHTML = html;
         }
 
         // Add stop config UI
         function addStopConfig() {
-            const container = document.getElementById('stopsConfig');
-            const idx = Date.now();
+            var container = document.getElementById('stopsConfig');
+            var idx = Date.now();
             
-            const div = document.createElement('div');
+            var div = document.createElement('div');
             div.className = 'stop-config';
-            div.innerHTML = `
-                <button class="remove-btn" onclick="this.parentElement.remove()">×</button>
-                <div class="form-group">
-                    <label>Search for stop</label>
-                    <input type="text" class="stop-search-input" placeholder="e.g. Düsseldorf Hbf" oninput="handleStopSearch(this, 'results-${idx}')">
-                    <div class="search-results" id="results-${idx}"></div>
-                </div>
-            `;
+            div.innerHTML = '<button class="remove-btn" onclick="this.parentElement.parentElement.removeChild(this.parentElement)">×</button>' +
+                '<div class="form-group">' +
+                '<label>Search for stop</label>' +
+                '<input type="text" class="stop-search-input" placeholder="e.g. Düsseldorf Hbf" oninput="handleStopSearch(this, \'results-' + idx + '\')">' +
+                '<div class="search-results" id="results-' + idx + '"></div>' +
+                '</div>';
             container.appendChild(div);
         }
 
@@ -715,50 +794,52 @@
 
         // Handle stop search input
         function handleStopSearch(input, resultsId) {
-            clearTimeout(searchTimeouts[resultsId]);
-            searchTimeouts[resultsId] = setTimeout(() => searchStops(input.value, resultsId), 400);
+            if (searchTimeouts[resultsId]) clearTimeout(searchTimeouts[resultsId]);
+            searchTimeouts[resultsId] = setTimeout(function() {
+                searchStops(input.value, resultsId);
+            }, 400);
         }
 
         // Handle click on search result
-        document.addEventListener('click', (e) => {
-            const result = e.target.closest('.search-result');
-            if (result && result.dataset.stopId) {
-                const stopConfig = result.closest('.stop-config');
-                stopConfig.dataset.stopId = result.dataset.stopId;
-                stopConfig.dataset.stopName = result.dataset.stopName;
-                
-                stopConfig.innerHTML = `
-                    <button class="remove-btn" onclick="this.parentElement.remove()">×</button>
-                    <div class="form-group">
-                        <label>Display label</label>
-                        <input type="text" class="stop-label-input" value="${escapeAttr(result.dataset.stopName)}" placeholder="Custom name">
-                    </div>
-                    <div style="font-size: 0.8rem; color: #666;">
-                        Stop: ${escapeHtml(result.dataset.stopName)}<br>
-                        ID: ${escapeHtml(result.dataset.stopId)}
-                    </div>
-                `;
+        document.addEventListener('click', function(e) {
+            var result = e.target;
+            while (result && !result.classList.contains('search-result')) {
+                result = result.parentElement;
             }
-        });
+            if (result && result.getAttribute('data-stop-id')) {
+                var stopConfig = result;
+                while (stopConfig && !stopConfig.classList.contains('stop-config')) {
+                    stopConfig = stopConfig.parentElement;
+                }
+                if (stopConfig) {
+                    var stopId = result.getAttribute('data-stop-id');
+                    var stopName = result.getAttribute('data-stop-name');
+                    stopConfig.setAttribute('data-stop-id', stopId);
+                    stopConfig.setAttribute('data-stop-name', stopName);
+                    
+                    stopConfig.innerHTML = '<button class="remove-btn" onclick="this.parentElement.parentElement.removeChild(this.parentElement)">×</button>' +
+                        '<div class="form-group">' +
+                        '<label>Display label</label>' +
+                        '<input type="text" class="stop-label-input" value="' + escapeAttr(stopName) + '" placeholder="Custom name">' +
+                        '</div>' +
+                        '<div class="stop-info">Stop: ' + escapeHtml(stopName) + '<br>ID: ' + escapeHtml(stopId) + '</div>';
+                }
+            }
+        }, false);
 
         // Helper: Escape HTML
         function escapeHtml(str) {
             if (!str) return '';
-            return String(str).replace(/[&<>"']/g, c => ({
-                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-            }[c]));
+            return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
         }
 
         function escapeAttr(str) {
-            if (!str) return '';
-            return String(str).replace(/[&<>"']/g, c => ({
-                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-            }[c]));
+            return escapeHtml(str);
         }
 
         // Status
         function setStatus(text, state) {
-            const el = document.getElementById('status');
+            var el = document.getElementById('status');
             el.textContent = text;
             el.className = 'status ' + (state || '');
         }
@@ -766,16 +847,16 @@
         // Modal
         function openModal() {
             renderStopsConfig();
-            document.getElementById('modal').classList.add('open');
+            document.getElementById('modal').className = 'modal open';
         }
 
         function closeModal() {
-            document.getElementById('modal').classList.remove('open');
+            document.getElementById('modal').className = 'modal';
         }
 
-        document.getElementById('modal').addEventListener('click', (e) => {
+        document.getElementById('modal').addEventListener('click', function(e) {
             if (e.target === document.getElementById('modal')) closeModal();
-        });
+        }, false);
 
         // Refresh timer
         function startRefreshTimer() {
