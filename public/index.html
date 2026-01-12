@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <title>Departures</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid #333;
+        }
+
+        .title {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .clock {
+            font-size: 2rem;
+            font-weight: 300;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .status {
+            font-size: 0.75rem;
+            color: #666;
+            margin-top: 4px;
+        }
+
+        .status.online { color: #4ade80; }
+        .status.error { color: #f87171; }
+
+        .stops-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 24px;
+        }
+
+        .stop-section {
+            background: #0f0f1a;
+            border-radius: 16px;
+            padding: 16px;
+        }
+
+        .stop-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #333;
+        }
+
+        .stop-name {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #88a4ff;
+        }
+
+        .stop-status {
+            font-size: 0.7rem;
+            color: #666;
+        }
+
+        .departures {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .departure {
+            display: grid;
+            grid-template-columns: 60px 1fr auto;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            background: #16213e;
+            border-radius: 10px;
+            border-left: 4px solid var(--line-color, #666);
+        }
+
+        .line {
+            font-size: 1.2rem;
+            font-weight: 700;
+            text-align: center;
+            padding: 6px;
+            border-radius: 6px;
+            background: var(--line-color, #666);
+            color: var(--line-text, #fff);
+        }
+
+        .destination {
+            font-size: 1rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .platform {
+            font-size: 0.75rem;
+            color: #888;
+            margin-top: 2px;
+        }
+
+        .time-info {
+            text-align: right;
+        }
+
+        .minutes {
+            font-size: 1.5rem;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .minutes.soon { color: #fbbf24; }
+        .minutes.now { color: #4ade80; animation: pulse 1s infinite; }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+
+        .scheduled {
+            font-size: 0.75rem;
+            color: #888;
+        }
+
+        .delay {
+            color: #f87171;
+            font-size: 0.7rem;
+        }
+
+        .loading, .error-msg {
+            text-align: center;
+            padding: 40px 20px;
+            color: #888;
+        }
+
+        .error-msg { color: #f87171; }
+
+        .settings-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #16213e;
+            border-radius: 50%;
+            width: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            border: none;
+            color: #888;
+            font-size: 1.5rem;
+            z-index: 100;
+        }
+
+        .settings-btn:hover { background: #1f2b4a; color: #fff; }
+
+        .modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.85);
+            align-items: flex-start;
+            justify-content: center;
+            padding: 20px;
+            overflow-y: auto;
+            z-index: 200;
+        }
+
+        .modal.open { display: flex; }
+
+        .modal-content {
+            background: #16213e;
+            padding: 24px;
+            border-radius: 16px;
+            width: 100%;
+            max-width: 500px;
+            margin: 40px 0;
+        }
+
+        .modal h2 {
+            margin-bottom: 20px;
+        }
+
+        .modal h3 {
+            margin: 20px 0 12px;
+            font-size: 1rem;
+            color: #88a4ff;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            color: #888;
+            font-size: 0.9rem;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #333;
+            border-radius: 8px;
+            background: #1a1a2e;
+            color: #fff;
+            font-size: 1rem;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #3b82f6;
+        }
+
+        .stop-config {
+            background: #1a1a2e;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            position: relative;
+        }
+
+        .stop-config .remove-btn {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: #f87171;
+            border: none;
+            color: #fff;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 1rem;
+            line-height: 1;
+        }
+
+        .search-results {
+            max-height: 200px;
+            overflow-y: auto;
+            background: #0f0f1a;
+            border-radius: 8px;
+            margin-top: 8px;
+        }
+
+        .search-result {
+            padding: 12px;
+            cursor: pointer;
+            border-bottom: 1px solid #333;
+        }
+
+        .search-result:hover { background: #252550; }
+        .search-result:last-child { border-bottom: none; }
+
+        .search-result small {
+            color: #666;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            margin-top: 8px;
+        }
+
+        .btn-primary {
+            background: #3b82f6;
+            color: #fff;
+        }
+
+        .btn-secondary {
+            background: #333;
+            color: #fff;
+            margin-right: 8px;
+        }
+
+        .btn-add {
+            background: #22c55e;
+            color: #fff;
+            width: 100%;
+            margin-bottom: 16px;
+        }
+
+        .btn-row {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 20px;
+            gap: 8px;
+        }
+
+        /* Line colors */
+        .line-u { --line-color: #0063af; }
+        .line-s { --line-color: #008d4f; }
+        .line-str { --line-color: #be1622; }
+        .line-bus { --line-color: #7b2d8e; }
+        .line-re { --line-color: #ec1c24; }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+        }
+
+        .empty-state p {
+            margin-bottom: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div>
+                <div class="title">Departures</div>
+                <div class="status" id="status">Initializing...</div>
+            </div>
+            <div class="clock" id="clock">--:--</div>
+        </header>
+        <div class="stops-grid" id="stopsGrid">
+            <div class="empty-state">
+                <p>No stops configured yet.</p>
+                <button class="btn btn-primary" onclick="openModal()">Add a Stop</button>
+            </div>
+        </div>
+    </div>
+
+    <button class="settings-btn" id="settingsBtn" onclick="openModal()">⚙</button>
+
+    <div class="modal" id="modal">
+        <div class="modal-content">
+            <h2>Settings</h2>
+            
+            <h3>Stops</h3>
+            <div id="stopsConfig"></div>
+            <button class="btn btn-add" onclick="addStopConfig()">+ Add Stop</button>
+
+            <h3>General</h3>
+            <div class="form-group">
+                <label>Refresh interval (seconds)</label>
+                <input type="number" id="refreshInterval" value="30" min="10" max="300">
+            </div>
+            <div class="form-group">
+                <label>Departures per stop</label>
+                <input type="number" id="maxDepartures" value="6" min="3" max="20">
+            </div>
+
+            <div class="btn-row">
+                <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="saveConfig()">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // State
+        let config = {
+            stops: [],
+            refreshInterval: 30,
+            maxDepartures: 6
+        };
+        let refreshTimer = null;
+        let searchTimeouts = {};
+
+        // Load saved config
+        function loadConfig() {
+            const saved = localStorage.getItem('departures_config_v3');
+            if (saved) {
+                config = { ...config, ...JSON.parse(saved) };
+            }
+            document.getElementById('refreshInterval').value = config.refreshInterval;
+            document.getElementById('maxDepartures').value = config.maxDepartures;
+        }
+
+        // Save config
+        function saveConfig() {
+            config.refreshInterval = parseInt(document.getElementById('refreshInterval').value) || 30;
+            config.maxDepartures = parseInt(document.getElementById('maxDepartures').value) || 6;
+            
+            // Gather stops from config UI
+            config.stops = [];
+            document.querySelectorAll('.stop-config').forEach((el, idx) => {
+                const stopId = el.dataset.stopId;
+                const stopName = el.dataset.stopName;
+                const label = el.querySelector('.stop-label-input')?.value || stopName;
+                if (stopId && stopName) {
+                    config.stops.push({ id: stopId, name: stopName, label: label });
+                }
+            });
+
+            localStorage.setItem('departures_config_v3', JSON.stringify(config));
+            closeModal();
+            renderStopsGrid();
+            fetchAllDepartures();
+            startRefreshTimer();
+        }
+
+        // Clock
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('clock').textContent = 
+                now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+        }
+
+        // Search stops via our proxy
+        async function searchStops(query, resultsContainerId) {
+            if (query.length < 3) {
+                document.getElementById(resultsContainerId).innerHTML = 
+                    '<div class="search-result"><small>Type at least 3 characters...</small></div>';
+                return;
+            }
+
+            document.getElementById(resultsContainerId).innerHTML = 
+                '<div class="search-result"><small>Searching...</small></div>';
+
+            try {
+                const res = await fetch(`/api/stops?q=${encodeURIComponent(query)}`);
+                const data = await res.json();
+                
+                let stops = [];
+                
+                // Parse the response - EFA has different formats
+                if (data.stopFinder?.points) {
+                    const points = data.stopFinder.points;
+                    if (Array.isArray(points)) {
+                        stops = points;
+                    } else if (points.point) {
+                        stops = Array.isArray(points.point) ? points.point : [points.point];
+                    }
+                }
+
+                if (stops.length === 0) {
+                    document.getElementById(resultsContainerId).innerHTML = 
+                        '<div class="search-result"><small>No stops found. Try a different search.</small></div>';
+                    return;
+                }
+
+                // Filter to actual stops and render
+                const filteredStops = stops
+                    .filter(s => s.type === 'stop' || s.anyType === 'stop')
+                    .slice(0, 10);
+
+                if (filteredStops.length === 0) {
+                    document.getElementById(resultsContainerId).innerHTML = 
+                        '<div class="search-result"><small>No stops found. Try a different search.</small></div>';
+                    return;
+                }
+
+                const html = filteredStops.map(stop => {
+                    const name = stop.name || stop.object || 'Unknown';
+                    const id = stop.stateless || stop.ref?.id || stop.id || '';
+                    const locality = stop.ref?.place || stop.locality || '';
+                    return `<div class="search-result" data-stop-id="${escapeAttr(id)}" data-stop-name="${escapeAttr(name)}">
+                        <strong>${escapeHtml(name)}</strong>
+                        ${locality ? `<br><small>${escapeHtml(locality)}</small>` : ''}
+                    </div>`;
+                }).join('');
+
+                document.getElementById(resultsContainerId).innerHTML = html;
+
+            } catch (err) {
+                console.error('Search error:', err);
+                document.getElementById(resultsContainerId).innerHTML = 
+                    `<div class="search-result"><small>Error: ${escapeHtml(err.message)}</small></div>`;
+            }
+        }
+
+        // Fetch departures for a stop via our proxy
+        async function fetchDepartures(stop) {
+            const res = await fetch(`/api/departures?stop=${encodeURIComponent(stop.id || stop.name)}`);
+            const data = await res.json();
+            return parseDepartures(data);
+        }
+
+        // Parse EFA departure response
+        function parseDepartures(data) {
+            const departures = [];
+            
+            let rawDeps = data.departureList || [];
+            if (!Array.isArray(rawDeps)) {
+                rawDeps = rawDeps ? [rawDeps] : [];
+            }
+
+            for (const dep of rawDeps) {
+                try {
+                    const servingLine = dep.servingLine || {};
+                    const dateTime = dep.dateTime || {};
+                    const realDateTime = dep.realDateTime || dateTime;
+                    
+                    const line = servingLine.number || servingLine.symbol || servingLine.name || '?';
+                    const destination = servingLine.direction || servingLine.destName || 'Unknown';
+                    const platform = dep.platform || dep.pointName || '';
+                    const product = servingLine.motType || servingLine.code || 0;
+                    
+                    const schedHour = parseInt(dateTime.hour) || 0;
+                    const schedMin = parseInt(dateTime.minute) || 0;
+                    const realHour = parseInt(realDateTime.hour) || schedHour;
+                    const realMin = parseInt(realDateTime.minute) || schedMin;
+                    
+                    const now = new Date();
+                    const schedDate = new Date(now);
+                    schedDate.setHours(schedHour, schedMin, 0, 0);
+                    
+                    const realDate = new Date(now);
+                    realDate.setHours(realHour, realMin, 0, 0);
+                    
+                    if (schedDate < now && (now - schedDate) > 12 * 60 * 60 * 1000) {
+                        schedDate.setDate(schedDate.getDate() + 1);
+                    }
+                    if (realDate < now && (now - realDate) > 12 * 60 * 60 * 1000) {
+                        realDate.setDate(realDate.getDate() + 1);
+                    }
+                    
+                    const minutes = Math.round((realDate - now) / 60000);
+                    const delay = Math.round((realDate - schedDate) / 60000);
+                    
+                    if (minutes >= -1) {
+                        departures.push({
+                            line,
+                            destination,
+                            platform,
+                            product,
+                            minutes,
+                            delay: delay > 0 ? delay : 0,
+                            scheduledTime: `${String(schedHour).padStart(2, '0')}:${String(schedMin).padStart(2, '0')}`
+                        });
+                    }
+                } catch (e) {
+                    console.error('Parse error for departure:', e, dep);
+                }
+            }
+
+            return departures.sort((a, b) => a.minutes - b.minutes);
+        }
+
+        // Fetch all stops
+        async function fetchAllDepartures() {
+            if (config.stops.length === 0) {
+                setStatus('No stops configured', '');
+                return;
+            }
+
+            setStatus('Updating...', '');
+            
+            for (const stop of config.stops) {
+                const container = document.querySelector(`[data-stop-container="${stop.id}"] .departures`);
+                const statusEl = document.querySelector(`[data-stop-container="${stop.id}"] .stop-status`);
+                
+                if (!container) continue;
+
+                try {
+                    const departures = await fetchDepartures(stop);
+                    renderDepartures(container, departures);
+                    if (statusEl) {
+                        statusEl.textContent = `Updated: ${new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`;
+                        statusEl.style.color = '#4ade80';
+                    }
+                } catch (err) {
+                    console.error(`Error fetching ${stop.name}:`, err);
+                    container.innerHTML = `<div class="error-msg">Error loading data<br><small>${escapeHtml(err.message)}</small></div>`;
+                    if (statusEl) {
+                        statusEl.textContent = 'Error';
+                        statusEl.style.color = '#f87171';
+                    }
+                }
+            }
+
+            setStatus(`Last update: ${new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`, 'online');
+        }
+
+        // Render departures for a stop
+        function renderDepartures(container, departures) {
+            if (!departures.length) {
+                container.innerHTML = '<div class="loading">No departures found</div>';
+                return;
+            }
+
+            const html = departures.slice(0, config.maxDepartures).map(dep => {
+                let minuteClass = '';
+                if (dep.minutes <= 0) minuteClass = 'now';
+                else if (dep.minutes <= 3) minuteClass = 'soon';
+
+                let lineClass = 'line-bus';
+                const lineLower = dep.line.toLowerCase();
+                const product = dep.product;
+                
+                if (lineLower.startsWith('u') || product === 2) lineClass = 'line-u';
+                else if (lineLower.startsWith('s') || product === 1) lineClass = 'line-s';
+                else if (product === 4 || product === 5) lineClass = 'line-str';
+                else if (lineLower.startsWith('re') || lineLower.startsWith('rb') || product === 0) lineClass = 'line-re';
+
+                return `
+                    <div class="departure ${lineClass}">
+                        <div class="line">${escapeHtml(dep.line)}</div>
+                        <div>
+                            <div class="destination">${escapeHtml(dep.destination)}</div>
+                            ${dep.platform ? `<div class="platform">Platform ${escapeHtml(dep.platform)}</div>` : ''}
+                        </div>
+                        <div class="time-info">
+                            <div class="minutes ${minuteClass}">${dep.minutes <= 0 ? 'now' : dep.minutes + ' min'}</div>
+                            <div class="scheduled">${dep.scheduledTime}</div>
+                            ${dep.delay > 0 ? `<div class="delay">+${dep.delay} min</div>` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            container.innerHTML = html;
+        }
+
+        // Render stops grid
+        function renderStopsGrid() {
+            const grid = document.getElementById('stopsGrid');
+            
+            if (config.stops.length === 0) {
+                grid.innerHTML = `
+                    <div class="empty-state">
+                        <p>No stops configured yet.</p>
+                        <button class="btn btn-primary" onclick="openModal()">Add a Stop</button>
+                    </div>
+                `;
+                return;
+            }
+
+            grid.innerHTML = config.stops.map(stop => `
+                <div class="stop-section" data-stop-container="${escapeAttr(stop.id)}">
+                    <div class="stop-header">
+                        <div class="stop-name">${escapeHtml(stop.label || stop.name)}</div>
+                        <div class="stop-status">Loading...</div>
+                    </div>
+                    <div class="departures">
+                        <div class="loading">Loading departures...</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Render stops config in modal
+        function renderStopsConfig() {
+            const container = document.getElementById('stopsConfig');
+            
+            if (config.stops.length === 0) {
+                container.innerHTML = '<p style="color: #888; margin-bottom: 12px;">No stops added yet.</p>';
+                return;
+            }
+
+            container.innerHTML = config.stops.map((stop, idx) => `
+                <div class="stop-config" data-stop-id="${escapeAttr(stop.id)}" data-stop-name="${escapeAttr(stop.name)}">
+                    <button class="remove-btn" onclick="removeStopConfig(${idx})">×</button>
+                    <div class="form-group">
+                        <label>Display label</label>
+                        <input type="text" class="stop-label-input" value="${escapeAttr(stop.label || stop.name)}" placeholder="Custom name">
+                    </div>
+                    <div style="font-size: 0.8rem; color: #666;">
+                        Stop: ${escapeHtml(stop.name)}<br>
+                        ID: ${escapeHtml(stop.id)}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Add stop config UI
+        function addStopConfig() {
+            const container = document.getElementById('stopsConfig');
+            const idx = Date.now();
+            
+            const div = document.createElement('div');
+            div.className = 'stop-config';
+            div.innerHTML = `
+                <button class="remove-btn" onclick="this.parentElement.remove()">×</button>
+                <div class="form-group">
+                    <label>Search for stop</label>
+                    <input type="text" class="stop-search-input" placeholder="e.g. Düsseldorf Hbf" oninput="handleStopSearch(this, 'results-${idx}')">
+                    <div class="search-results" id="results-${idx}"></div>
+                </div>
+            `;
+            container.appendChild(div);
+        }
+
+        // Remove stop config
+        function removeStopConfig(idx) {
+            config.stops.splice(idx, 1);
+            renderStopsConfig();
+        }
+
+        // Handle stop search input
+        function handleStopSearch(input, resultsId) {
+            clearTimeout(searchTimeouts[resultsId]);
+            searchTimeouts[resultsId] = setTimeout(() => searchStops(input.value, resultsId), 400);
+        }
+
+        // Handle click on search result
+        document.addEventListener('click', (e) => {
+            const result = e.target.closest('.search-result');
+            if (result && result.dataset.stopId) {
+                const stopConfig = result.closest('.stop-config');
+                stopConfig.dataset.stopId = result.dataset.stopId;
+                stopConfig.dataset.stopName = result.dataset.stopName;
+                
+                stopConfig.innerHTML = `
+                    <button class="remove-btn" onclick="this.parentElement.remove()">×</button>
+                    <div class="form-group">
+                        <label>Display label</label>
+                        <input type="text" class="stop-label-input" value="${escapeAttr(result.dataset.stopName)}" placeholder="Custom name">
+                    </div>
+                    <div style="font-size: 0.8rem; color: #666;">
+                        Stop: ${escapeHtml(result.dataset.stopName)}<br>
+                        ID: ${escapeHtml(result.dataset.stopId)}
+                    </div>
+                `;
+            }
+        });
+
+        // Helper: Escape HTML
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str).replace(/[&<>"']/g, c => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            }[c]));
+        }
+
+        function escapeAttr(str) {
+            if (!str) return '';
+            return String(str).replace(/[&<>"']/g, c => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            }[c]));
+        }
+
+        // Status
+        function setStatus(text, state) {
+            const el = document.getElementById('status');
+            el.textContent = text;
+            el.className = 'status ' + (state || '');
+        }
+
+        // Modal
+        function openModal() {
+            renderStopsConfig();
+            document.getElementById('modal').classList.add('open');
+        }
+
+        function closeModal() {
+            document.getElementById('modal').classList.remove('open');
+        }
+
+        document.getElementById('modal').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('modal')) closeModal();
+        });
+
+        // Refresh timer
+        function startRefreshTimer() {
+            if (refreshTimer) clearInterval(refreshTimer);
+            refreshTimer = setInterval(fetchAllDepartures, config.refreshInterval * 1000);
+        }
+
+        // Initialize
+        loadConfig();
+        updateClock();
+        setInterval(updateClock, 1000);
+        renderStopsGrid();
+        fetchAllDepartures();
+        startRefreshTimer();
+    </script>
+</body>
+</html>
