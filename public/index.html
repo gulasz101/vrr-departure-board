@@ -364,6 +364,31 @@
             font-size: 0.8rem;
             color: #666;
         }
+
+        .platform-select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #333;
+            border-radius: 8px;
+            background: #1a1a2e;
+            color: #fff;
+            font-size: 16px;
+            -webkit-appearance: none;
+            appearance: none;
+            cursor: pointer;
+        }
+
+        .platform-loading {
+            padding: 12px;
+            color: #888;
+            font-size: 0.9rem;
+        }
+
+        .platform-badge {
+            font-size: 0.75rem;
+            color: #fbbf24;
+            margin-left: 8px;
+        }
     </style>
 </head>
 <body>
@@ -451,7 +476,7 @@
         function saveConfig() {
             config.refreshInterval = parseInt(document.getElementById('refreshInterval').value) || 30;
             config.maxDepartures = parseInt(document.getElementById('maxDepartures').value) || 6;
-            
+
             // Gather stops from config UI
             config.stops = [];
             var stopEls = document.querySelectorAll('.stop-config');
@@ -460,9 +485,11 @@
                 var stopId = el.getAttribute('data-stop-id');
                 var stopName = el.getAttribute('data-stop-name');
                 var labelInput = el.querySelector('.stop-label-input');
+                var platformSelect = el.querySelector('.platform-select');
                 var label = labelInput ? labelInput.value : stopName;
+                var platform = platformSelect ? platformSelect.value : '';
                 if (stopId && stopName) {
-                    config.stops.push({ id: stopId, name: stopName, label: label || stopName });
+                    config.stops.push({ id: stopId, name: stopName, label: label || stopName, platform: platform });
                 }
             }
 
@@ -660,6 +687,12 @@
                                 statusEl.style.color = '#f87171';
                             }
                         } else {
+                            // Filter by platform if configured
+                            if (stop.platform) {
+                                departures = departures.filter(function(dep) {
+                                    return dep.platform === stop.platform;
+                                });
+                            }
                             renderDepartures(container, departures);
                             if (statusEl) {
                                 var now = new Date();
@@ -726,7 +759,7 @@
         // Render stops grid
         function renderStopsGrid() {
             var grid = document.getElementById('stopsGrid');
-            
+
             if (config.stops.length === 0) {
                 grid.innerHTML = '<div class="empty-state"><p>No stops configured yet.</p><button class="btn btn-primary" onclick="openModal()">Add a Stop</button></div>';
                 return;
@@ -735,9 +768,10 @@
             var html = '';
             for (var i = 0; i < config.stops.length; i++) {
                 var stop = config.stops[i];
+                var platformBadge = stop.platform ? '<span class="platform-badge">Platform ' + escapeHtml(stop.platform) + '</span>' : '';
                 html += '<div class="stop-section" data-stop-container="' + escapeAttr(stop.id) + '">';
                 html += '<div class="stop-header">';
-                html += '<div class="stop-name">' + escapeHtml(stop.label || stop.name) + '</div>';
+                html += '<div class="stop-name">' + escapeHtml(stop.label || stop.name) + platformBadge + '</div>';
                 html += '<div class="stop-status">Loading...</div>';
                 html += '</div>';
                 html += '<div class="departures"><div class="loading">Loading departures...</div></div>';
@@ -749,7 +783,7 @@
         // Render stops config in modal
         function renderStopsConfig() {
             var container = document.getElementById('stopsConfig');
-            
+
             if (config.stops.length === 0) {
                 container.innerHTML = '<p style="color: #888; margin-bottom: 12px;">No stops added yet.</p>';
                 return;
@@ -758,16 +792,44 @@
             var html = '';
             for (var i = 0; i < config.stops.length; i++) {
                 var stop = config.stops[i];
-                html += '<div class="stop-config" data-stop-id="' + escapeAttr(stop.id) + '" data-stop-name="' + escapeAttr(stop.name) + '">';
+                var platformInfo = stop.platform ? ' · Platform ' + escapeHtml(stop.platform) : '';
+                html += '<div class="stop-config" data-stop-id="' + escapeAttr(stop.id) + '" data-stop-name="' + escapeAttr(stop.name) + '" data-stop-platform="' + escapeAttr(stop.platform || '') + '" data-stop-idx="' + i + '">';
                 html += '<button class="remove-btn" onclick="removeStopConfig(' + i + ')">×</button>';
                 html += '<div class="form-group">';
                 html += '<label>Display label</label>';
                 html += '<input type="text" class="stop-label-input" value="' + escapeAttr(stop.label || stop.name) + '" placeholder="Custom name">';
                 html += '</div>';
-                html += '<div class="stop-info">Stop: ' + escapeHtml(stop.name) + '<br>ID: ' + escapeHtml(stop.id) + '</div>';
+                html += '<div class="form-group">';
+                html += '<label>Platform</label>';
+                html += '<div class="platform-loading" id="platform-container-' + i + '">Loading platforms...</div>';
+                html += '</div>';
+                html += '<div class="stop-info">Stop: ' + escapeHtml(stop.name) + platformInfo + '<br>ID: ' + escapeHtml(stop.id) + '</div>';
                 html += '</div>';
             }
             container.innerHTML = html;
+
+            // Fetch platforms for each existing stop
+            for (var j = 0; j < config.stops.length; j++) {
+                (function(idx, stop) {
+                    fetchPlatformsForStop(stop.id, function(err, platforms) {
+                        var platformContainer = document.getElementById('platform-container-' + idx);
+                        if (!platformContainer) return;
+
+                        if (!err && platforms.length > 0) {
+                            var selectHtml = '<select class="platform-select">' +
+                                '<option value="">All platforms</option>';
+                            for (var k = 0; k < platforms.length; k++) {
+                                var selected = platforms[k] === stop.platform ? ' selected' : '';
+                                selectHtml += '<option value="' + escapeAttr(platforms[k]) + '"' + selected + '>Platform ' + escapeHtml(platforms[k]) + '</option>';
+                            }
+                            selectHtml += '</select>';
+                            platformContainer.outerHTML = selectHtml;
+                        } else {
+                            platformContainer.textContent = 'No platforms found';
+                        }
+                    });
+                })(j, config.stops[j]);
+            }
         }
 
         // Add stop config UI
@@ -800,6 +862,60 @@
             }, 400);
         }
 
+        // Fetch available platforms for a stop
+        function fetchPlatformsForStop(stopId, callback) {
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', '/api/departures?stop=' + encodeURIComponent(stopId), true);
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4) {
+                    if (xhr.status === 200) {
+                        try {
+                            var data = JSON.parse(xhr.responseText);
+                            var platforms = [];
+                            var seen = {};
+                            var rawDeps = data.departureList || [];
+                            if (!Array.isArray(rawDeps)) {
+                                rawDeps = rawDeps ? [rawDeps] : [];
+                            }
+                            for (var i = 0; i < rawDeps.length; i++) {
+                                var platform = rawDeps[i].platform || rawDeps[i].pointName || '';
+                                if (platform && !seen[platform]) {
+                                    seen[platform] = true;
+                                    platforms.push(platform);
+                                }
+                            }
+                            platforms.sort(function(a, b) {
+                                var numA = parseInt(a);
+                                var numB = parseInt(b);
+                                if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+                                return a.localeCompare(b);
+                            });
+                            callback(null, platforms);
+                        } catch (e) {
+                            callback(e, []);
+                        }
+                    } else {
+                        callback(new Error('HTTP ' + xhr.status), []);
+                    }
+                }
+            };
+            xhr.send();
+        }
+
+        // Render platform selector dropdown
+        function renderPlatformSelector(container, platforms, selectedPlatform) {
+            var html = '<div class="form-group">' +
+                '<label>Platform</label>' +
+                '<select class="platform-select">' +
+                '<option value="">All platforms</option>';
+            for (var i = 0; i < platforms.length; i++) {
+                var selected = platforms[i] === selectedPlatform ? ' selected' : '';
+                html += '<option value="' + escapeAttr(platforms[i]) + '"' + selected + '>Platform ' + escapeHtml(platforms[i]) + '</option>';
+            }
+            html += '</select></div>';
+            return html;
+        }
+
         // Handle click on search result
         document.addEventListener('click', function(e) {
             var result = e.target;
@@ -816,13 +932,33 @@
                     var stopName = result.getAttribute('data-stop-name');
                     stopConfig.setAttribute('data-stop-id', stopId);
                     stopConfig.setAttribute('data-stop-name', stopName);
-                    
+
+                    // Show loading state while fetching platforms
                     stopConfig.innerHTML = '<button class="remove-btn" onclick="this.parentElement.parentElement.removeChild(this.parentElement)">×</button>' +
                         '<div class="form-group">' +
                         '<label>Display label</label>' +
                         '<input type="text" class="stop-label-input" value="' + escapeAttr(stopName) + '" placeholder="Custom name">' +
                         '</div>' +
+                        '<div class="platform-loading">Loading platforms...</div>' +
                         '<div class="stop-info">Stop: ' + escapeHtml(stopName) + '<br>ID: ' + escapeHtml(stopId) + '</div>';
+
+                    // Fetch platforms and update UI
+                    fetchPlatformsForStop(stopId, function(err, platforms) {
+                        var platformHtml = '';
+                        if (!err && platforms.length > 0) {
+                            platformHtml = renderPlatformSelector(stopConfig, platforms, '');
+                        } else if (platforms.length === 0) {
+                            platformHtml = '<div class="form-group"><label>Platform</label><div class="platform-loading">No platforms found</div></div>';
+                        }
+
+                        stopConfig.innerHTML = '<button class="remove-btn" onclick="this.parentElement.parentElement.removeChild(this.parentElement)">×</button>' +
+                            '<div class="form-group">' +
+                            '<label>Display label</label>' +
+                            '<input type="text" class="stop-label-input" value="' + escapeAttr(stopName) + '" placeholder="Custom name">' +
+                            '</div>' +
+                            platformHtml +
+                            '<div class="stop-info">Stop: ' + escapeHtml(stopName) + '<br>ID: ' + escapeHtml(stopId) + '</div>';
+                    });
                 }
             }
         }, false);
