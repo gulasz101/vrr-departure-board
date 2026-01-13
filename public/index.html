@@ -463,6 +463,30 @@
             color: #fbbf24;
             margin-left: 8px;
         }
+
+        .time-badge {
+            font-size: 0.75rem;
+            color: #60a5fa;
+            margin-left: 8px;
+        }
+
+        .time-range-row {
+            display: -webkit-box;
+            display: -webkit-flex;
+            display: flex;
+            gap: 12px;
+        }
+
+        .time-range-row .form-group {
+            -webkit-box-flex: 1;
+            -webkit-flex: 1;
+            flex: 1;
+            margin-bottom: 0;
+        }
+
+        .time-range-row input {
+            width: 100%;
+        }
     </style>
 </head>
 <body>
@@ -560,11 +584,15 @@
                 var stopName = el.getAttribute('data-stop-name');
                 var labelInput = el.querySelector('.stop-label-input');
                 var platformDropdown = el.querySelector('.platform-dropdown');
+                var timeFromInput = el.querySelector('.time-from-input');
+                var timeToInput = el.querySelector('.time-to-input');
                 var label = labelInput ? labelInput.value : stopName;
                 var platformsStr = platformDropdown ? platformDropdown.getAttribute('data-selected') : '';
                 var platforms = platformsStr ? platformsStr.split(',') : [];
+                var timeFrom = timeFromInput ? parseInt(timeFromInput.value) || 0 : 0;
+                var timeTo = timeToInput ? parseInt(timeToInput.value) || 60 : 60;
                 if (stopId && stopName) {
-                    config.stops.push({ id: stopId, name: stopName, label: label || stopName, platforms: platforms });
+                    config.stops.push({ id: stopId, name: stopName, label: label || stopName, platforms: platforms, timeFrom: timeFrom, timeTo: timeTo });
                 }
             }
 
@@ -784,6 +812,12 @@
                                     return stopPlatforms.indexOf(dep.platform) !== -1;
                                 });
                             }
+                            // Filter by time range
+                            var timeFrom = stop.timeFrom || 0;
+                            var timeTo = stop.timeTo || 60;
+                            departures = departures.filter(function(dep) {
+                                return dep.minutes >= timeFrom && dep.minutes <= timeTo;
+                            });
                             renderDepartures(container, departures);
                             if (statusEl) {
                                 var now = new Date();
@@ -867,9 +901,16 @@
                 } else if (stopPlatforms.length > 1) {
                     platformBadge = '<span class="platform-badge">' + stopPlatforms.length + ' platforms</span>';
                 }
+                // Time range badge
+                var timeFrom = stop.timeFrom || 0;
+                var timeTo = stop.timeTo || 60;
+                var timeBadge = '';
+                if (timeFrom > 0 || timeTo !== 60) {
+                    timeBadge = '<span class="time-badge">' + timeFrom + '-' + timeTo + ' min</span>';
+                }
                 html += '<div class="stop-section" data-stop-container="' + escapeAttr(stop.id) + '">';
                 html += '<div class="stop-header">';
-                html += '<div class="stop-name">' + escapeHtml(stop.label || stop.name) + platformBadge + '</div>';
+                html += '<div class="stop-name">' + escapeHtml(stop.label || stop.name) + platformBadge + timeBadge + '</div>';
                 html += '<div class="stop-status">Loading...</div>';
                 html += '</div>';
                 html += '<div class="departures"><div class="loading">Loading departures...</div></div>';
@@ -893,6 +934,8 @@
                 // Support both old 'platform' and new 'platforms' format
                 var stopPlatforms = stop.platforms || (stop.platform ? [stop.platform] : []);
                 var platformInfo = stopPlatforms.length > 0 ? ' · Platform ' + escapeHtml(stopPlatforms.join(', ')) : '';
+                var timeFrom = stop.timeFrom || 0;
+                var timeTo = stop.timeTo || 60;
                 html += '<div class="stop-config" data-stop-id="' + escapeAttr(stop.id) + '" data-stop-name="' + escapeAttr(stop.name) + '" data-stop-idx="' + i + '">';
                 html += '<button class="remove-btn" onclick="removeStopConfig(' + i + ')">×</button>';
                 html += '<div class="form-group">';
@@ -902,6 +945,17 @@
                 html += '<div class="form-group">';
                 html += '<label>Platforms</label>';
                 html += '<div class="platform-loading" id="platform-container-' + i + '">Loading platforms...</div>';
+                html += '</div>';
+                html += '<label style="display:block; margin-bottom:6px; color:#888; font-size:0.9rem;">Time range (minutes from now)</label>';
+                html += '<div class="time-range-row">';
+                html += '<div class="form-group">';
+                html += '<label>From</label>';
+                html += '<input type="number" class="time-from-input" value="' + timeFrom + '" min="0" max="480" placeholder="0">';
+                html += '</div>';
+                html += '<div class="form-group">';
+                html += '<label>To</label>';
+                html += '<input type="number" class="time-to-input" value="' + timeTo + '" min="1" max="480" placeholder="60">';
+                html += '</div>';
                 html += '</div>';
                 html += '<div class="stop-info">Stop: ' + escapeHtml(stop.name) + platformInfo + '<br>ID: ' + escapeHtml(stop.id) + '</div>';
                 html += '</div>';
@@ -1068,12 +1122,25 @@
                             platformHtml = '<div class="form-group"><label>Platform</label><div class="platform-loading">No platforms found</div></div>';
                         }
 
+                        var timeRangeHtml = '<label style="display:block; margin-bottom:6px; color:#888; font-size:0.9rem;">Time range (minutes from now)</label>' +
+                            '<div class="time-range-row">' +
+                            '<div class="form-group">' +
+                            '<label>From</label>' +
+                            '<input type="number" class="time-from-input" value="0" min="0" max="480" placeholder="0">' +
+                            '</div>' +
+                            '<div class="form-group">' +
+                            '<label>To</label>' +
+                            '<input type="number" class="time-to-input" value="60" min="1" max="480" placeholder="60">' +
+                            '</div>' +
+                            '</div>';
+
                         stopConfig.innerHTML = '<button class="remove-btn" onclick="this.parentElement.parentElement.removeChild(this.parentElement)">×</button>' +
                             '<div class="form-group">' +
                             '<label>Display label</label>' +
                             '<input type="text" class="stop-label-input" value="' + escapeAttr(stopName) + '" placeholder="Custom name">' +
                             '</div>' +
                             platformHtml +
+                            timeRangeHtml +
                             '<div class="stop-info">Stop: ' + escapeHtml(stopName) + '<br>ID: ' + escapeHtml(stopId) + '</div>';
                     });
                 }
