@@ -661,10 +661,24 @@
                             var data = JSON.parse(xhr.responseText);
                             callback(null, parseDepartures(data));
                         } catch (e) {
-                            callback(e, []);
+                            callback({ message: 'Failed to parse response', type: 'PARSE_ERROR' }, []);
                         }
                     } else {
-                        callback(new Error('HTTP ' + xhr.status), []);
+                        // Try to extract error message from response
+                        var errorMsg = 'HTTP ' + xhr.status;
+                        var errorType = 'HTTP_ERROR';
+                        try {
+                            var errData = JSON.parse(xhr.responseText);
+                            if (errData.error) {
+                                errorMsg = errData.error;
+                            }
+                            if (errData.details && errData.details.type) {
+                                errorType = errData.details.type;
+                            }
+                        } catch (e) {
+                            // Could not parse error response
+                        }
+                        callback({ message: errorMsg, type: errorType, status: xhr.status }, []);
                     }
                 }
             };
@@ -756,9 +770,10 @@
                     fetchDepartures(stop, function(err, departures) {
                         completed++;
                         if (err) {
-                            container.innerHTML = '<div class="error-msg">Error loading data</div>';
+                            var errorMsg = err.message || 'Unknown error';
+                            container.innerHTML = '<div class="error-msg">' + escapeHtml(errorMsg) + '</div>';
                             if (statusEl) {
-                                statusEl.textContent = 'Error';
+                                statusEl.textContent = err.type || 'Error';
                                 statusEl.style.color = '#f87171';
                             }
                         } else {
