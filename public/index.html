@@ -365,17 +365,68 @@
             color: #666;
         }
 
-        .platform-select {
-            width: 100%;
+        .platform-dropdown {
+            position: relative;
+        }
+
+        .platform-selected {
             padding: 12px;
-            border: 1px solid #333;
+            background: #0f0f1a;
             border-radius: 8px;
-            background: #1a1a2e;
-            color: #fff;
-            font-size: 16px;
-            -webkit-appearance: none;
-            appearance: none;
             cursor: pointer;
+            display: -webkit-flex;
+            display: flex;
+            -webkit-justify-content: space-between;
+            justify-content: space-between;
+            -webkit-align-items: center;
+            align-items: center;
+        }
+
+        .platform-selected:after {
+            content: "▼";
+            font-size: 0.7rem;
+            color: #666;
+        }
+
+        .platform-dropdown.open .platform-selected:after {
+            content: "▲";
+        }
+
+        .platform-options {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            max-height: 200px;
+            overflow-y: auto;
+            background: #0f0f1a;
+            border-radius: 8px;
+            margin-top: 4px;
+            z-index: 10;
+        }
+
+        .platform-dropdown.open .platform-options {
+            display: block;
+        }
+
+        .platform-option {
+            padding: 12px;
+            cursor: pointer;
+            border-bottom: 1px solid #333;
+        }
+
+        .platform-option:last-child {
+            border-bottom: none;
+        }
+
+        .platform-option:hover {
+            background: #1a1a2e;
+        }
+
+        .platform-option.selected {
+            background: #16213e;
+            color: #88a4ff;
         }
 
         .platform-loading {
@@ -485,9 +536,9 @@
                 var stopId = el.getAttribute('data-stop-id');
                 var stopName = el.getAttribute('data-stop-name');
                 var labelInput = el.querySelector('.stop-label-input');
-                var platformSelect = el.querySelector('.platform-select');
+                var platformDropdown = el.querySelector('.platform-dropdown');
                 var label = labelInput ? labelInput.value : stopName;
-                var platform = platformSelect ? platformSelect.value : '';
+                var platform = platformDropdown ? platformDropdown.getAttribute('data-selected') : '';
                 if (stopId && stopName) {
                     config.stops.push({ id: stopId, name: stopName, label: label || stopName, platform: platform });
                 }
@@ -816,14 +867,17 @@
                         if (!platformContainer) return;
 
                         if (!err && platforms.length > 0) {
-                            var selectHtml = '<select class="platform-select">' +
-                                '<option value="">All platforms</option>';
+                            var selectedLabel = stop.platform ? 'Platform ' + escapeHtml(stop.platform) : 'All platforms';
+                            var dropdownHtml = '<div class="platform-dropdown" data-selected="' + escapeAttr(stop.platform || '') + '">' +
+                                '<div class="platform-selected">' + selectedLabel + '</div>' +
+                                '<div class="platform-options">' +
+                                '<div class="platform-option' + (!stop.platform ? ' selected' : '') + '" data-value="">All platforms</div>';
                             for (var k = 0; k < platforms.length; k++) {
-                                var selected = platforms[k] === stop.platform ? ' selected' : '';
-                                selectHtml += '<option value="' + escapeAttr(platforms[k]) + '"' + selected + '>Platform ' + escapeHtml(platforms[k]) + '</option>';
+                                var isSelected = platforms[k] === stop.platform ? ' selected' : '';
+                                dropdownHtml += '<div class="platform-option' + isSelected + '" data-value="' + escapeAttr(platforms[k]) + '">Platform ' + escapeHtml(platforms[k]) + '</div>';
                             }
-                            selectHtml += '</select>';
-                            platformContainer.outerHTML = selectHtml;
+                            dropdownHtml += '</div></div>';
+                            platformContainer.outerHTML = dropdownHtml;
                         } else {
                             platformContainer.textContent = 'No platforms found';
                         }
@@ -904,15 +958,18 @@
 
         // Render platform selector dropdown
         function renderPlatformSelector(container, platforms, selectedPlatform) {
+            var selectedLabel = selectedPlatform ? 'Platform ' + escapeHtml(selectedPlatform) : 'All platforms';
             var html = '<div class="form-group">' +
                 '<label>Platform</label>' +
-                '<select class="platform-select">' +
-                '<option value="">All platforms</option>';
+                '<div class="platform-dropdown" data-selected="' + escapeAttr(selectedPlatform || '') + '">' +
+                '<div class="platform-selected">' + selectedLabel + '</div>' +
+                '<div class="platform-options">' +
+                '<div class="platform-option' + (selectedPlatform === '' ? ' selected' : '') + '" data-value="">All platforms</div>';
             for (var i = 0; i < platforms.length; i++) {
-                var selected = platforms[i] === selectedPlatform ? ' selected' : '';
-                html += '<option value="' + escapeAttr(platforms[i]) + '"' + selected + '>Platform ' + escapeHtml(platforms[i]) + '</option>';
+                var isSelected = platforms[i] === selectedPlatform ? ' selected' : '';
+                html += '<div class="platform-option' + isSelected + '" data-value="' + escapeAttr(platforms[i]) + '">Platform ' + escapeHtml(platforms[i]) + '</div>';
             }
-            html += '</select></div>';
+            html += '</div></div></div>';
             return html;
         }
 
@@ -960,6 +1017,52 @@
                             '<div class="stop-info">Stop: ' + escapeHtml(stopName) + '<br>ID: ' + escapeHtml(stopId) + '</div>';
                     });
                 }
+            }
+        }, false);
+
+        // Handle click on platform dropdown
+        document.addEventListener('click', function(e) {
+            var target = e.target;
+
+            // Check if clicked on platform-selected (toggle dropdown)
+            if (target.classList.contains('platform-selected')) {
+                var dropdown = target.parentElement;
+                dropdown.classList.toggle('open');
+                e.stopPropagation();
+                return;
+            }
+
+            // Check if clicked on platform-option (select option)
+            if (target.classList.contains('platform-option')) {
+                var dropdown = target.parentElement;
+                while (dropdown && !dropdown.classList.contains('platform-dropdown')) {
+                    dropdown = dropdown.parentElement;
+                }
+                if (!dropdown) return;
+                var value = target.getAttribute('data-value');
+                var label = target.textContent;
+
+                // Update selected value
+                dropdown.setAttribute('data-selected', value);
+                dropdown.querySelector('.platform-selected').textContent = label;
+
+                // Update selected class
+                var options = dropdown.querySelectorAll('.platform-option');
+                for (var i = 0; i < options.length; i++) {
+                    options[i].classList.remove('selected');
+                }
+                target.classList.add('selected');
+
+                // Close dropdown
+                dropdown.classList.remove('open');
+                e.stopPropagation();
+                return;
+            }
+
+            // Close any open dropdowns when clicking outside
+            var openDropdowns = document.querySelectorAll('.platform-dropdown.open');
+            for (var j = 0; j < openDropdowns.length; j++) {
+                openDropdowns[j].classList.remove('open');
             }
         }, false);
 
