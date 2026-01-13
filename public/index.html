@@ -441,6 +441,17 @@
             color: #88a4ff;
         }
 
+        .platform-option:before {
+            content: "☐";
+            margin-right: 8px;
+            font-size: 1rem;
+        }
+
+        .platform-option.selected:before {
+            content: "☑";
+            color: #4ade80;
+        }
+
         .platform-loading {
             padding: 12px;
             color: #888;
@@ -550,9 +561,10 @@
                 var labelInput = el.querySelector('.stop-label-input');
                 var platformDropdown = el.querySelector('.platform-dropdown');
                 var label = labelInput ? labelInput.value : stopName;
-                var platform = platformDropdown ? platformDropdown.getAttribute('data-selected') : '';
+                var platformsStr = platformDropdown ? platformDropdown.getAttribute('data-selected') : '';
+                var platforms = platformsStr ? platformsStr.split(',') : [];
                 if (stopId && stopName) {
-                    config.stops.push({ id: stopId, name: stopName, label: label || stopName, platform: platform });
+                    config.stops.push({ id: stopId, name: stopName, label: label || stopName, platforms: platforms });
                 }
             }
 
@@ -750,10 +762,11 @@
                                 statusEl.style.color = '#f87171';
                             }
                         } else {
-                            // Filter by platform if configured
-                            if (stop.platform) {
+                            // Filter by platforms if configured (supports both old and new format)
+                            var stopPlatforms = stop.platforms || (stop.platform ? [stop.platform] : []);
+                            if (stopPlatforms.length > 0) {
                                 departures = departures.filter(function(dep) {
-                                    return dep.platform === stop.platform;
+                                    return stopPlatforms.indexOf(dep.platform) !== -1;
                                 });
                             }
                             renderDepartures(container, departures);
@@ -831,7 +844,14 @@
             var html = '';
             for (var i = 0; i < config.stops.length; i++) {
                 var stop = config.stops[i];
-                var platformBadge = stop.platform ? '<span class="platform-badge">Platform ' + escapeHtml(stop.platform) + '</span>' : '';
+                // Support both old 'platform' and new 'platforms' format
+                var stopPlatforms = stop.platforms || (stop.platform ? [stop.platform] : []);
+                var platformBadge = '';
+                if (stopPlatforms.length === 1) {
+                    platformBadge = '<span class="platform-badge">Platform ' + escapeHtml(stopPlatforms[0]) + '</span>';
+                } else if (stopPlatforms.length > 1) {
+                    platformBadge = '<span class="platform-badge">' + stopPlatforms.length + ' platforms</span>';
+                }
                 html += '<div class="stop-section" data-stop-container="' + escapeAttr(stop.id) + '">';
                 html += '<div class="stop-header">';
                 html += '<div class="stop-name">' + escapeHtml(stop.label || stop.name) + platformBadge + '</div>';
@@ -855,15 +875,17 @@
             var html = '';
             for (var i = 0; i < config.stops.length; i++) {
                 var stop = config.stops[i];
-                var platformInfo = stop.platform ? ' · Platform ' + escapeHtml(stop.platform) : '';
-                html += '<div class="stop-config" data-stop-id="' + escapeAttr(stop.id) + '" data-stop-name="' + escapeAttr(stop.name) + '" data-stop-platform="' + escapeAttr(stop.platform || '') + '" data-stop-idx="' + i + '">';
+                // Support both old 'platform' and new 'platforms' format
+                var stopPlatforms = stop.platforms || (stop.platform ? [stop.platform] : []);
+                var platformInfo = stopPlatforms.length > 0 ? ' · Platform ' + escapeHtml(stopPlatforms.join(', ')) : '';
+                html += '<div class="stop-config" data-stop-id="' + escapeAttr(stop.id) + '" data-stop-name="' + escapeAttr(stop.name) + '" data-stop-idx="' + i + '">';
                 html += '<button class="remove-btn" onclick="removeStopConfig(' + i + ')">×</button>';
                 html += '<div class="form-group">';
                 html += '<label>Display label</label>';
                 html += '<input type="text" class="stop-label-input" value="' + escapeAttr(stop.label || stop.name) + '" placeholder="Custom name">';
                 html += '</div>';
                 html += '<div class="form-group">';
-                html += '<label>Platform</label>';
+                html += '<label>Platforms</label>';
                 html += '<div class="platform-loading" id="platform-container-' + i + '">Loading platforms...</div>';
                 html += '</div>';
                 html += '<div class="stop-info">Stop: ' + escapeHtml(stop.name) + platformInfo + '<br>ID: ' + escapeHtml(stop.id) + '</div>';
@@ -879,13 +901,16 @@
                         if (!platformContainer) return;
 
                         if (!err && platforms.length > 0) {
-                            var selectedLabel = stop.platform ? 'Platform ' + escapeHtml(stop.platform) : 'All platforms';
-                            var dropdownHtml = '<div class="platform-dropdown" data-selected="' + escapeAttr(stop.platform || '') + '">' +
+                            // Support both old 'platform' and new 'platforms' format
+                            var selectedPlatforms = stop.platforms || (stop.platform ? [stop.platform] : []);
+                            var selectedLabel = selectedPlatforms.length === 0 ? 'All platforms' :
+                                selectedPlatforms.length === 1 ? 'Platform ' + escapeHtml(selectedPlatforms[0]) :
+                                selectedPlatforms.length + ' platforms';
+                            var dropdownHtml = '<div class="platform-dropdown" data-selected="' + escapeAttr(selectedPlatforms.join(',')) + '">' +
                                 '<div class="platform-selected">' + selectedLabel + '</div>' +
-                                '<div class="platform-options">' +
-                                '<div class="platform-option' + (!stop.platform ? ' selected' : '') + '" data-value="">All platforms</div>';
+                                '<div class="platform-options">';
                             for (var k = 0; k < platforms.length; k++) {
-                                var isSelected = platforms[k] === stop.platform ? ' selected' : '';
+                                var isSelected = selectedPlatforms.indexOf(platforms[k]) !== -1 ? ' selected' : '';
                                 dropdownHtml += '<div class="platform-option' + isSelected + '" data-value="' + escapeAttr(platforms[k]) + '">Platform ' + escapeHtml(platforms[k]) + '</div>';
                             }
                             dropdownHtml += '</div></div>';
@@ -968,17 +993,25 @@
             xhr.send();
         }
 
-        // Render platform selector dropdown
-        function renderPlatformSelector(container, platforms, selectedPlatform) {
-            var selectedLabel = selectedPlatform ? 'Platform ' + escapeHtml(selectedPlatform) : 'All platforms';
+        // Render platform selector dropdown (multi-select)
+        function renderPlatformSelector(container, platforms, selectedPlatforms) {
+            // Ensure selectedPlatforms is an array
+            if (!selectedPlatforms) selectedPlatforms = [];
+            if (typeof selectedPlatforms === 'string') {
+                selectedPlatforms = selectedPlatforms ? [selectedPlatforms] : [];
+            }
+
+            var selectedLabel = selectedPlatforms.length === 0 ? 'All platforms' :
+                selectedPlatforms.length === 1 ? 'Platform ' + escapeHtml(selectedPlatforms[0]) :
+                selectedPlatforms.length + ' platforms';
+
             var html = '<div class="form-group">' +
-                '<label>Platform</label>' +
-                '<div class="platform-dropdown" data-selected="' + escapeAttr(selectedPlatform || '') + '">' +
+                '<label>Platforms</label>' +
+                '<div class="platform-dropdown" data-selected="' + escapeAttr(selectedPlatforms.join(',')) + '">' +
                 '<div class="platform-selected">' + selectedLabel + '</div>' +
-                '<div class="platform-options">' +
-                '<div class="platform-option' + (selectedPlatform === '' ? ' selected' : '') + '" data-value="">All platforms</div>';
+                '<div class="platform-options">';
             for (var i = 0; i < platforms.length; i++) {
-                var isSelected = platforms[i] === selectedPlatform ? ' selected' : '';
+                var isSelected = selectedPlatforms.indexOf(platforms[i]) !== -1 ? ' selected' : '';
                 html += '<div class="platform-option' + isSelected + '" data-value="' + escapeAttr(platforms[i]) + '">Platform ' + escapeHtml(platforms[i]) + '</div>';
             }
             html += '</div></div></div>';
@@ -1044,7 +1077,7 @@
                 return;
             }
 
-            // Check if clicked on platform-option (select option)
+            // Check if clicked on platform-option (toggle multi-select)
             if (target.classList.contains('platform-option')) {
                 var dropdown = target.parentElement;
                 while (dropdown && !dropdown.classList.contains('platform-dropdown')) {
@@ -1052,21 +1085,31 @@
                 }
                 if (!dropdown) return;
                 var value = target.getAttribute('data-value');
-                var label = target.textContent;
 
-                // Update selected value
-                dropdown.setAttribute('data-selected', value);
+                // Toggle selection
+                if (target.classList.contains('selected')) {
+                    target.classList.remove('selected');
+                } else {
+                    target.classList.add('selected');
+                }
+
+                // Gather all selected values
+                var selectedOptions = dropdown.querySelectorAll('.platform-option.selected');
+                var selectedValues = [];
+                for (var i = 0; i < selectedOptions.length; i++) {
+                    var val = selectedOptions[i].getAttribute('data-value');
+                    if (val) selectedValues.push(val);
+                }
+
+                // Update data-selected attribute
+                dropdown.setAttribute('data-selected', selectedValues.join(','));
+
+                // Update display label
+                var label = selectedValues.length === 0 ? 'All platforms' :
+                    selectedValues.length === 1 ? 'Platform ' + selectedValues[0] :
+                    selectedValues.length + ' platforms';
                 dropdown.querySelector('.platform-selected').textContent = label;
 
-                // Update selected class
-                var options = dropdown.querySelectorAll('.platform-option');
-                for (var i = 0; i < options.length; i++) {
-                    options[i].classList.remove('selected');
-                }
-                target.classList.add('selected');
-
-                // Close dropdown
-                dropdown.classList.remove('open');
                 e.stopPropagation();
                 return;
             }
