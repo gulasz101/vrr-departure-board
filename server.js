@@ -222,6 +222,12 @@ app.get('/health', (req, res) => {
 });
 
 app.listen(PORT, () => {
+    const now = new Date();
     log('INFO', `Departure board running at http://localhost:${PORT}`);
     log('INFO', 'Logging level: DEBUG (all requests and responses logged)');
+    log('INFO', `Timezone: ${process.env.TZ || 'system default'}`, {
+        localTime: now.toLocaleString('de-DE', { timeZone: process.env.TZ || 'UTC' }),
+        hour: now.getHours(),
+        minute: now.getMinutes()
+    });
 });
