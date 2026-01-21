@@ -4,7 +4,8 @@
   "description": "VRR departure board for self-hosting",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "stop": " pkill -f \"node server.js\" 2>/dev/null;"
   },
   "dependencies": {
     "express": "^4.18.2"
