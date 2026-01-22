@@ -16,15 +16,43 @@ A self-hosted departure board for VRR (Düsseldorf / NRW) public transport. Perf
 
 ## Quick Start
 
-### Docker (recommended)
+### Docker Compose (recommended)
 
 ```bash
+# Clone and start
+git clone <repository-url>
+cd departure-board
 docker-compose up -d
+
+# View logs
+docker-compose logs -f
+
+# Stop
+docker-compose down
 ```
 
 Then open http://localhost:8080
 
-### Node.js
+### Docker (standalone)
+
+```bash
+# Build image
+docker build -t departure-board .
+
+# Run container
+docker run -d -p 8080:8080 --name departure-board departure-board
+
+# View logs
+docker logs -f departure-board
+
+# Stop and remove
+docker stop departure-board
+docker rm departure-board
+```
+
+Then open http://localhost:8080
+
+### Node.js (development)
 
 ```bash
 npm install
