@@ -633,29 +633,24 @@
         }
 
         .settings-btn {
-            position: relative;
-        }
-        .collapsed-badge {
-            position: absolute;
-            top: -6px;
-            right: -6px;
-            background: #ef4444;
-            color: #fff;
-            font-size: 0.7rem;
-            font-weight: bold;
-            min-width: 20px;
-            height: 20px;
-            border-radius: 10px;
-            display: none;
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #16213e;
+            border-radius: 50%;
+            width: 48px;
+            height: 48px;
+            display: -webkit-flex;
+            display: flex;
             -webkit-align-items: center;
             align-items: center;
             -webkit-justify-content: center;
             justify-content: center;
-            border: 2px solid #1a1a2e;
-        }
-        .collapsed-badge.visible {
-            display: -webkit-flex;
-            display: flex;
+            cursor: pointer;
+            border: none;
+            color: #888;
+            font-size: 1.5rem;
+            z-index: 100;
         }
 
         .btn-collapse {
@@ -690,10 +685,7 @@
         </div>
     </div>
 
-    <button class="settings-btn" id="settingsBtn" onclick="openModal()">
-        <span style="font-size: 1.5rem;">⚙</span>
-        <span class="collapsed-badge" id="collapsedBadge">0</span>
-    </button>
+    <button class="settings-btn" id="settingsBtn" onclick="openModal()">⚙</button>
 
     <div class="modal" id="modal">
         <div class="modal-content">
@@ -1158,9 +1150,6 @@
 
             grid.innerHTML = html;
 
-            // Update collapsed badge on settings button
-            updateCollapsedBadge();
-
             // Make items draggable
             var sections = grid.querySelectorAll('.stop-section');
             for (var j = 0; j < sections.length; j++) {
@@ -1217,9 +1206,6 @@
             for (var j = 0; j < configs.length; j++) {
                 makeDraggable(configs[j], j, 'config');
             }
-
-            // Update collapsed badge
-            updateCollapsedBadge();
 
             // Fetch platforms for each existing stop
             for (var j = 0; j < config.stops.length; j++) {
@@ -1654,22 +1640,6 @@
                 dragOvers[i].classList.remove('drag-over');
             }
             touchDragItem = null;
-        }
-
-        function updateCollapsedBadge() {
-            var count = 0;
-            for (var i = 0; i < config.stops.length; i++) {
-                if (config.stops[i].collapsed) count++;
-            }
-            var badge = document.getElementById('collapsedBadge');
-            if (badge) {
-                badge.textContent = count;
-                if (count > 0) {
-                    badge.classList.add('visible');
-                } else {
-                    badge.classList.remove('visible');
-                }
-            }
         }
 
         function reorderStops(fromIdx, toIdx, source) {
