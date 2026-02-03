@@ -8,6 +8,33 @@ This is a self-hosted VRR (Düsseldorf/NRW public transport) departure board web
 - **Backend**: Node.js Express server acting as CORS proxy for VRR EFA API
 - **Frontend**: Single HTML file with vanilla CSS/JavaScript (no build tools)
 - **Deployment**: Docker with docker-compose support
+- **Features**: Drag-and-drop stop reordering (grid & settings), touch support for mobile
+
+## Serena MCP Integration
+
+The project uses Serena MCP for efficient code analysis and navigation.
+
+### Initial Setup
+```bash
+# Activate project in Serena
+serena_activate_project(project: "/Users/wojciechgula/Projects/departure-board")
+```
+
+### Useful Tools
+- `serenca_get_symbols_overview()` - Get symbols (functions, constants, variables) in a file
+- `serenca_find_symbol()` - Search for specific symbols with name path patterns
+- `serenca_find_referencing_symbols()` - Find all references to a symbol
+- `serenca_search_for_pattern()` - Search for patterns in codebase
+- `serenca_list_dir()` - List directory contents
+
+### Example Usage
+```javascript
+// Get overview of server.js
+serenca_get_symbols_overview({ relative_path: "server.js" })
+
+// Find all references to a function
+serenca_find_referencing_symbols({ name_path: "fetchDepartures", relative_path: "public/index.html" })
+```
 
 ## Build/Test Commands
 
@@ -53,12 +80,13 @@ docker-compose logs -f  # View logs
 - **Event Handling**: Add event listeners, avoid inline handlers
 - **Data Storage**: Use localStorage for configuration persistence
 - **Async Operations**: Fetch API with proper error handling
+- **Drag & Drop**: Use `makeDraggable()` function, add polyfills for older browsers
 
 ### CSS Guidelines
-- **Vendor Prefixes**: Include -webkit- prefixes for older browser compatibility
+- **Vendor Prefixes**: Include -webkit- prefixes for older browser compatibility (iOS 5+)
 - **CSS Variables**: Use custom properties for theming (colors, spacing)
 - **Responsive Design**: Mobile-first approach with flexbox layouts
-- **Browser Support**: Target modern browsers with graceful degradation
+- **Touch Support**: Add -webkit-touch-callout, -webkit-tap-highlight-color
 
 ### HTML Structure
 - **Single Page**: All frontend code in `public/index.html`
@@ -75,8 +103,11 @@ departure-board/
 │   └── index.html              # Complete frontend (HTML/CSS/JS)
 ├── package.json                # Node.js dependencies
 ├── Dockerfile                  # Docker configuration
-├── docker-compose.yml         # Docker compose setup
-└── README.md                  # Project documentation
+├── docker-compose.yml          # Docker compose setup
+├── README.md                  # Project documentation
+├── AGENTS.md                  # Agent guidelines
+├── PROJECT_MEMORY.md          # Project knowledge base
+└── .serena/                   # Serena MCP index and cache
 ```
 
 ## API Integration Patterns
@@ -109,11 +140,33 @@ res.status(500).json({
 });
 ```
 
+## Frontend Architecture (public/index.html)
+
+### Key Functions
+- `renderStopsGrid()` - Renders main departure board
+- `renderStopsConfig()` - Renders settings modal with stop configs
+- `makeDraggable(el, index, source)` - Makes element draggable (grid or config)
+- `reorderStops(fromIdx, toIdx, source)` - Reorders stops and persists to localStorage
+- `fetchDepartures(stop, callback)` - Fetches departures for a stop
+- `fetchPlatformsForStop(stopId, callback)` - Fetches available platforms
+
+### Drag and Drop System
+- Uses HTML5 drag-and-drop API for desktop
+- Uses touch events for mobile/tablet (iOS 5+ compatible)
+- Polyfills: `closest()` method, event listener handling
+- Visual feedback: opacity changes, border highlights
+
+### State Management
+- `config` object stored in localStorage ('departures_config_v3')
+- Contains: stops array, refreshInterval, maxDepartures
+- Stop object structure: `{ id, name, label, platforms[], timeFrom, timeTo }`
+
 ## Testing Approach
 
 ### Manual Testing
 - Test API endpoints directly with curl
 - Verify frontend functionality in different browsers
+- Test drag-and-drop on desktop and mobile devices
 - Test Docker deployment locally
 
 ### Health Check
@@ -130,6 +183,7 @@ res.status(500).json({
 - Stored in localStorage as JSON
 - Includes stop list, display preferences, refresh intervals
 - Support for both old and new configuration formats
+- Key: 'departures_config_v3'
 
 ## Security Considerations
 
@@ -159,6 +213,8 @@ res.status(500).json({
 2. **Frontend**: Add functions to the HTML file, maintain single-file structure
 3. **Configuration**: Extend localStorage config format with backward compatibility
 4. **Error Handling**: Follow existing error classification patterns
+5. **Drag & Drop**: Use existing `makeDraggable()` and `reorderStops()` utilities
+6. **Browser Support**: Add -webkit- prefixes for iOS compatibility
 
 ### When Fixing Bugs
 1. **Logging**: Add appropriate log statements for debugging
@@ -170,12 +226,13 @@ res.status(500).json({
 
 - **Caching**: No caching implemented - consider for high-traffic deployments
 - **API Rate Limits**: Be mindful of VRR API usage patterns
-- **Bundle Size**: Frontend is ~49KB - monitor size when adding features
+- **Bundle Size**: Frontend is ~50KB - monitor size when adding features
 - **Memory Usage**: Minimal Node.js memory footprint
 
 ## Browser Compatibility
 
-- **Modern Browsers**: Full functionality
-- **iOS Safari**: Optimized for kiosk mode with web app meta tags
+- **Modern Browsers**: Full functionality including drag-and-drop
+- **iOS Safari**: Full support (iOS 5+ with -webkit- prefixes)
+- **iPad**: Tested and supported (including iPad 3)
 - **Android**: Responsive design works on mobile devices
-- **Legacy Support**: Vendor prefixes for older browsers
+- **Legacy Browsers**: Vendor prefixes included, polyfills for older methods
