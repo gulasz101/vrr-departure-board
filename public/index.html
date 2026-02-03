@@ -578,6 +578,63 @@
             -webkit-transition: -webkit-transform 0.2s ease, box-shadow 0.2s ease;
             transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
+
+        .stop-section.collapsed {
+            min-height: auto;
+        }
+        .stop-section.collapsed .departures {
+            display: none;
+        }
+        .stop-section.collapsed .stop-header {
+            border-bottom: none;
+            padding-bottom: 8px;
+        }
+
+        .toggle-btn {
+            display: inline-block;
+            width: 24px;
+            height: 24px;
+            text-align: center;
+            line-height: 24px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            color: #666;
+            transform: rotate(0deg);
+            -webkit-transform: rotate(0deg);
+            transition: transform 0.3s ease;
+            -webkit-transition: -webkit-transform 0.3s ease;
+        }
+        .toggle-btn.collapsed {
+            transform: rotate(-90deg);
+            -webkit-transform: rotate(-90deg);
+        }
+
+        .collapsed-indicator {
+            font-size: 0.85rem;
+            color: #888;
+            background: #1a1a2e;
+            padding: 10px 12px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            cursor: pointer;
+        }
+        .collapsed-indicator:hover {
+            background: #16213e;
+        }
+
+        .btn-collapse {
+            background: #333;
+            color: #fff;
+            padding: 8px 12px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            margin-right: 8px;
+        }
+        .btn-collapse:hover {
+            background: #444;
+        }
     </style>
 </head>
 <body>
@@ -604,6 +661,10 @@
             <h2>Settings</h2>
             
             <h3>Stops</h3>
+            <div style="margin-bottom: 12px;">
+                <button class="btn-collapse" onclick="expandAllStops()">Expand All</button>
+                <button class="btn-collapse" onclick="collapseAllStops()">Collapse All</button>
+            </div>
             <div id="stopsConfig"></div>
             <button class="btn btn-add" onclick="addStopConfig()">+ Add Stop</button>
 
@@ -653,6 +714,13 @@
                     config.stops = parsed.stops || [];
                     config.refreshInterval = parsed.refreshInterval || 30;
                     config.maxDepartures = parsed.maxDepartures || 6;
+
+                    // Backward compatibility: ensure collapsed property exists
+                    for (var i = 0; i < config.stops.length; i++) {
+                        if (typeof config.stops[i].collapsed === 'undefined') {
+                            config.stops[i].collapsed = false;
+                        }
+                    }
                 }
             } catch (e) {
                 console.error('Load config error:', e);
@@ -875,14 +943,44 @@
 
             setStatus('Updating...', '');
             var completed = 0;
-            
+            var totalToFetch = 0;
+            var collapsedCount = 0;
+
             for (var i = 0; i < config.stops.length; i++) {
+                if (config.stops[i].collapsed) {
+                    collapsedCount++;
+                    continue;
+                }
+                totalToFetch++;
+            }
+
+            if (collapsedCount > 0) {
+                var now = new Date();
+                var h = String(now.getHours()).padStart(2, '0');
+                var m = String(now.getMinutes()).padStart(2, '0');
+                setStatus('Last update: ' + h + ':' + m + ' (' + collapsedCount + ' collapsed)', 'online');
+            }
+
+            if (totalToFetch === 0) {
+                setStatus('All stops collapsed', 'online');
+                return;
+            }
+
+            for (var j = 0; j < config.stops.length; j++) {
+                if (config.stops[j].collapsed) continue;
+
                 (function(stop) {
                     var container = document.querySelector('[data-stop-container="' + stop.id + '"] .departures');
                     var statusEl = document.querySelector('[data-stop-container="' + stop.id + '"] .stop-status');
-                    
+
                     if (!container) {
                         completed++;
+                        if (completed === totalToFetch) {
+                            var now = new Date();
+                            var h = String(now.getHours()).padStart(2, '0');
+                            var m = String(now.getMinutes()).padStart(2, '0');
+                            setStatus('Last update: ' + h + ':' + m + ' (' + collapsedCount + ' collapsed)', 'online');
+                        }
                         return;
                     }
 
@@ -918,15 +1016,15 @@
                                 statusEl.style.color = '#4ade80';
                             }
                         }
-                        
-                        if (completed === config.stops.length) {
+
+                        if (completed === totalToFetch) {
                             var now = new Date();
                             var h = String(now.getHours()).padStart(2, '0');
                             var m = String(now.getMinutes()).padStart(2, '0');
-                            setStatus('Last update: ' + h + ':' + m, 'online');
+                            setStatus('Last update: ' + h + ':' + m + ' (' + collapsedCount + ' collapsed)', 'online');
                         }
                     });
-                })(config.stops[i]);
+                })(config.stops[j]);
             }
         }
 
@@ -981,9 +1079,13 @@
                 return;
             }
 
+            var collapsedCount = 0;
             var html = '';
+
             for (var i = 0; i < config.stops.length; i++) {
                 var stop = config.stops[i];
+                if (stop.collapsed) collapsedCount++;
+
                 // Support both old 'platform' and new 'platforms' format
                 var stopPlatforms = stop.platforms || (stop.platform ? [stop.platform] : []);
                 var platformBadge = '';
@@ -999,15 +1101,27 @@
                 if (timeFrom > 0 || timeTo !== 60) {
                     timeBadge = '<span class="time-badge">' + timeFrom + '-' + timeTo + ' min</span>';
                 }
-                html += '<div class="stop-section" data-stop-container="' + escapeAttr(stop.id) + '">';
+
+                var collapsedClass = stop.collapsed ? ' collapsed' : '';
+                var toggleClass = stop.collapsed ? 'toggle-btn collapsed' : 'toggle-btn';
+                var statusText = stop.collapsed ? 'Collapsed' : 'Loading...';
+
+                html += '<div class="stop-section' + collapsedClass + '" data-stop-container="' + escapeAttr(stop.id) + '" data-stop-idx="' + i + '">';
                 html += '<div class="stop-header">';
                 html += '<div class="drag-handle">⋮⋮</div>';
+                html += '<div class="' + toggleClass + '" onclick="toggleStopCollapse(' + i + ')">▼</div>';
                 html += '<div class="stop-name">' + escapeHtml(stop.label || stop.name) + platformBadge + timeBadge + '</div>';
-                html += '<div class="stop-status">Loading...</div>';
+                html += '<div class="stop-status">' + statusText + '</div>';
                 html += '</div>';
                 html += '<div class="departures"><div class="loading">Loading departures...</div></div>';
                 html += '</div>';
             }
+
+            if (collapsedCount > 0) {
+                var visibleCount = config.stops.length - collapsedCount;
+                html = '<div class="collapsed-indicator" onclick="openModal()">Showing ' + visibleCount + ' of ' + config.stops.length + ' stops (' + collapsedCount + ' hidden) - Tap to manage</div>' + html;
+            }
+
             grid.innerHTML = html;
 
             // Make items draggable
@@ -1511,6 +1625,35 @@
                 renderStopsGrid();
                 fetchAllDepartures();
             }
+        }
+
+        function toggleStopCollapse(index) {
+            if (config.stops[index]) {
+                config.stops[index].collapsed = !config.stops[index].collapsed;
+                localStorage.setItem('departures_config_v3', JSON.stringify(config));
+                renderStopsGrid();
+                fetchAllDepartures();
+            }
+        }
+
+        function collapseAllStops() {
+            for (var i = 0; i < config.stops.length; i++) {
+                config.stops[i].collapsed = true;
+            }
+            localStorage.setItem('departures_config_v3', JSON.stringify(config));
+            renderStopsConfig();
+            renderStopsGrid();
+            fetchAllDepartures();
+        }
+
+        function expandAllStops() {
+            for (var i = 0; i < config.stops.length; i++) {
+                config.stops[i].collapsed = false;
+            }
+            localStorage.setItem('departures_config_v3', JSON.stringify(config));
+            renderStopsConfig();
+            renderStopsGrid();
+            fetchAllDepartures();
         }
     </script>
 </body>
