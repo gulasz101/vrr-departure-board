@@ -149,17 +149,29 @@ res.status(500).json({
 - `reorderStops(fromIdx, toIdx, source)` - Reorders stops and persists to localStorage
 - `fetchDepartures(stop, callback)` - Fetches departures for a stop
 - `fetchPlatformsForStop(stopId, callback)` - Fetches available platforms
+- `toggleStopCollapse(index)` - Collapses/expands a single stop
+- `collapseAllStops()` - Collapses all stops at once
+- `expandAllStops()` - Expands all stops at once
 
 ### Drag and Drop System
 - Uses HTML5 drag-and-drop API for desktop
 - Uses touch events for mobile/tablet (iOS 5+ compatible)
 - Polyfills: `closest()` method, event listener handling
 - Visual feedback: opacity changes, border highlights
+- Animation: Disable transitions during drag to prevent flickering
+
+### Collapsible Stops
+- Each stop can be collapsed/expanded via toggle button (▼/▶)
+- Collapsed stops don't trigger API requests (saves bandwidth)
+- Toggle button is large (36px) for easy touch targeting
+- Settings modal has "Collapse All" / "Expand All" buttons
+- Collapsed state persists in localStorage
+- Supports backward compatibility (collapsed defaults to false)
 
 ### State Management
 - `config` object stored in localStorage ('departures_config_v3')
 - Contains: stops array, refreshInterval, maxDepartures
-- Stop object structure: `{ id, name, label, platforms[], timeFrom, timeTo }`
+- Stop object structure: `{ id, name, label, platforms[], timeFrom, timeTo, collapsed }`
 
 ## Testing Approach
 
