@@ -544,8 +544,11 @@
         .draggable { cursor: grab; }
         .draggable.dragging {
             opacity: 0.4;
-            -webkit-transition: opacity 0.2s;
-            transition: opacity 0.2s;
+        }
+        .draggable.dragging,
+        .draggable.dragging * {
+            -webkit-transition: none !important;
+            transition: none !important;
         }
         .draggable.drag-over {
             border: 2px dashed #3b82f6;
@@ -574,9 +577,10 @@
             -webkit-transition: -webkit-transform 0.2s ease, box-shadow 0.2s ease;
             transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
-        .stop-section.dragging {
-            -webkit-transition: -webkit-transform 0.2s ease, box-shadow 0.2s ease;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        .stop-section.dragging,
+        .stop-section.dragging * {
+            -webkit-transition: none !important;
+            transition: none !important;
         }
 
         .stop-section.collapsed {
@@ -1549,8 +1553,7 @@
             dragSource = this.getAttribute('data-dnd-source');
             e.dataTransfer.setData('text/plain', this.getAttribute('data-dnd-index'));
             e.dataTransfer.effectAllowed = 'move';
-            var self = this;
-            setTimeout(function() { self.classList.add('dragging'); }, 0);
+            this.classList.add('dragging');
         }
 
         function handleDragEnd(e) {
