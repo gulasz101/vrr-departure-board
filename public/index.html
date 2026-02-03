@@ -285,6 +285,7 @@
 
         .stop-config {
             background: #1a1a2e;
+            -webkit-border-radius: 12px;
             border-radius: 12px;
             padding: 16px;
             margin-bottom: 12px;
@@ -531,27 +532,32 @@
             cursor: grab;
             color: #666;
             padding: 8px;
+            -webkit-user-select: none;
             user-select: none;
-            touch-action: none;
+            -webkit-touch-callout: none;
+            -webkit-tap-highlight-color: transparent;
             font-size: 1.2rem;
             margin-right: 8px;
         }
         .drag-handle:active { cursor: grabbing; }
 
-        .draggable { cursor: grab; touch-action: none; }
+        .draggable { cursor: grab; }
         .draggable.dragging {
             opacity: 0.4;
+            -webkit-transition: opacity 0.2s;
             transition: opacity 0.2s;
         }
         .draggable.drag-over {
             border: 2px dashed #3b82f6;
             background: rgba(59, 130, 246, 0.1);
+            -webkit-border-radius: 12px;
             border-radius: 12px;
         }
 
         .stop-config.drag-over {
             border: 2px dashed #3b82f6;
             background: rgba(59, 130, 246, 0.1);
+            -webkit-border-radius: 12px;
             border-radius: 12px;
         }
 
@@ -560,13 +566,16 @@
             background: rgba(136, 164, 255, 0.1);
             min-height: 80px;
             margin-bottom: 12px;
+            -webkit-border-radius: 12px;
             border-radius: 12px;
         }
 
         .stop-section {
+            -webkit-transition: -webkit-transform 0.2s ease, box-shadow 0.2s ease;
             transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
         .stop-section.dragging {
+            -webkit-transition: -webkit-transform 0.2s ease, box-shadow 0.2s ease;
             transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
     </style>
@@ -1350,35 +1359,62 @@
         var touchStartY = 0;
         var touchDragItem = null;
 
+        // Polyfill for closest() for older iOS
+        if (!Element.prototype.closest) {
+            Element.prototype.closest = function(selector) {
+                var node = this;
+                while (node) {
+                    if (node.matches && node.matches(selector)) return node;
+                    node = node.parentNode;
+                }
+                return null;
+            };
+        }
+
+        function closestByClass(el, className) {
+            while (el && el.className) {
+                if (el.className.indexOf(className) !== -1) return el;
+                el = el.parentNode;
+            }
+            return null;
+        }
+
+        function addTouchListener(el, type, handler) {
+            el.addEventListener(type, handler);
+        }
+
         function makeDraggable(el, index, source) {
             el.setAttribute('draggable', 'true');
             el.setAttribute('data-dnd-index', index);
             el.setAttribute('data-dnd-source', source);
             el.classList.add('draggable');
 
-            el.addEventListener('dragstart', handleDragStart);
-            el.addEventListener('dragend', handleDragEnd);
-            el.addEventListener('dragover', handleDragOver);
-            el.addEventListener('drop', handleDrop);
-            el.addEventListener('dragenter', handleDragEnter);
-            el.addEventListener('dragleave', handleDragLeave);
+            el.addEventListener('dragstart', handleDragStart, false);
+            el.addEventListener('dragend', handleDragEnd, false);
+            el.addEventListener('dragover', handleDragOver, false);
+            el.addEventListener('drop', handleDrop, false);
+            el.addEventListener('dragenter', handleDragEnter, false);
+            el.addEventListener('dragleave', handleDragLeave, false);
 
-            el.addEventListener('touchstart', handleTouchStart, { passive: false });
-            el.addEventListener('touchmove', handleTouchMove, { passive: false });
-            el.addEventListener('touchend', handleTouchEnd);
+            addTouchListener(el, 'touchstart', handleTouchStart);
+            addTouchListener(el, 'touchmove', handleTouchMove);
+            addTouchListener(el, 'touchend', handleTouchEnd);
         }
 
         function handleDragStart(e) {
             draggedItem = this;
-            dragSource = this.dataset.dndSource;
-            e.dataTransfer.setData('text/plain', this.dataset.dndIndex);
+            dragSource = this.getAttribute('data-dnd-source');
+            e.dataTransfer.setData('text/plain', this.getAttribute('data-dnd-index'));
             e.dataTransfer.effectAllowed = 'move';
-            setTimeout(function() { this.classList.add('dragging'); }.bind(this), 0);
+            setTimeout(function() { this.classList.add('dragging'); }, 0);
         }
 
         function handleDragEnd(e) {
             this.classList.remove('dragging');
-            document.querySelectorAll('.drag-over').forEach(function(el) { el.classList.remove('drag-over'); });
+            var dragOvers = document.querySelectorAll('.drag-over');
+            for (var i = 0; i < dragOvers.length; i++) {
+                dragOvers[i].classList.remove('drag-over');
+            }
             draggedItem = null;
             dragSource = null;
         }
@@ -1406,7 +1442,7 @@
             if (this === draggedItem) return;
 
             var fromIdx = parseInt(e.dataTransfer.getData('text/plain'));
-            var toIdx = parseInt(this.dataset.dndIndex);
+            var toIdx = parseInt(this.getAttribute('data-dnd-index'));
 
             if (!isNaN(fromIdx) && !isNaN(toIdx) && fromIdx !== toIdx) {
                 reorderStops(fromIdx, toIdx, dragSource);
@@ -1414,21 +1450,26 @@
         }
 
         function handleTouchStart(e) {
+            if (e.touches.length > 1) return;
             touchDragItem = this;
             var touch = e.touches[0];
             touchStartY = touch.clientY;
             this.classList.add('dragging');
+            e.preventDefault();
         }
 
         function handleTouchMove(e) {
-            e.preventDefault();
             if (!touchDragItem) return;
+            e.preventDefault();
 
             var touch = e.touches[0];
             var target = document.elementFromPoint(touch.clientX, touch.clientY);
-            var dropTarget = target ? target.closest('.draggable') : null;
+            var dropTarget = closestByClass(target, 'draggable');
 
-            document.querySelectorAll('.drag-over').forEach(function(el) { el.classList.remove('drag-over'); });
+            var dragOvers = document.querySelectorAll('.drag-over');
+            for (var i = 0; i < dragOvers.length; i++) {
+                dragOvers[i].classList.remove('drag-over');
+            }
 
             if (dropTarget && dropTarget !== touchDragItem) {
                 dropTarget.classList.add('drag-over');
@@ -1440,18 +1481,21 @@
 
             var touch = e.changedTouches[0];
             var target = document.elementFromPoint(touch.clientX, touch.clientY);
-            var dropTarget = target ? target.closest('.draggable') : null;
+            var dropTarget = closestByClass(target, 'draggable');
 
             if (dropTarget && dropTarget !== touchDragItem) {
-                var fromIdx = parseInt(touchDragItem.dataset.dndIndex);
-                var toIdx = parseInt(dropTarget.dataset.dndIndex);
+                var fromIdx = parseInt(touchDragItem.getAttribute('data-dnd-index'));
+                var toIdx = parseInt(dropTarget.getAttribute('data-dnd-index'));
                 if (!isNaN(fromIdx) && !isNaN(toIdx) && fromIdx !== toIdx) {
-                    reorderStops(fromIdx, toIdx, touchDragItem.dataset.dndSource);
+                    reorderStops(fromIdx, toIdx, touchDragItem.getAttribute('data-dnd-source'));
                 }
             }
 
             touchDragItem.classList.remove('dragging');
-            document.querySelectorAll('.drag-over').forEach(function(el) { el.classList.remove('drag-over'); });
+            var dragOvers = document.querySelectorAll('.drag-over');
+            for (var i = 0; i < dragOvers.length; i++) {
+                dragOvers[i].classList.remove('drag-over');
+            }
             touchDragItem = null;
         }
 
