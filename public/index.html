@@ -77,13 +77,23 @@
         .stop-header {
             display: -webkit-flex;
             display: flex;
-            -webkit-justify-content: space-between;
-            justify-content: space-between;
+            -webkit-justify-content: flex-start;
+            justify-content: flex-start;
             -webkit-align-items: center;
             align-items: center;
             margin-bottom: 16px;
             padding-bottom: 12px;
             border-bottom: 1px solid #333;
+            gap: 8px;
+        }
+
+        .stop-header .stop-name {
+            -webkit-flex: 1;
+            flex: 1;
+        }
+
+        .stop-header .drag-handle {
+            margin-right: 0;
         }
 
         .stop-name {
@@ -279,6 +289,35 @@
             padding: 16px;
             margin-bottom: 12px;
             position: relative;
+            display: -webkit-flex;
+            display: flex;
+            -webkit-flex-wrap: wrap;
+            flex-wrap: wrap;
+            -webkit-align-items: flex-start;
+            align-items: flex-start;
+        }
+
+        .stop-config .drag-handle {
+            position: absolute;
+            left: 8px;
+            top: 16px;
+            z-index: 5;
+        }
+
+        .stop-config .remove-btn {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            z-index: 5;
+        }
+
+        .stop-config > .form-group,
+        .stop-config > .platform-loading,
+        .stop-config > label,
+        .stop-config > .time-range-row,
+        .stop-config > .stop-info {
+            margin-left: 40px;
+            width: calc(100% - 40px);
         }
 
         .stop-config .remove-btn {
@@ -486,6 +525,49 @@
 
         .time-range-row input {
             width: 100%;
+        }
+
+        .drag-handle {
+            cursor: grab;
+            color: #666;
+            padding: 8px;
+            user-select: none;
+            touch-action: none;
+            font-size: 1.2rem;
+            margin-right: 8px;
+        }
+        .drag-handle:active { cursor: grabbing; }
+
+        .draggable { cursor: grab; touch-action: none; }
+        .draggable.dragging {
+            opacity: 0.4;
+            transition: opacity 0.2s;
+        }
+        .draggable.drag-over {
+            border: 2px dashed #3b82f6;
+            background: rgba(59, 130, 246, 0.1);
+            border-radius: 12px;
+        }
+
+        .stop-config.drag-over {
+            border: 2px dashed #3b82f6;
+            background: rgba(59, 130, 246, 0.1);
+            border-radius: 12px;
+        }
+
+        .drop-placeholder {
+            border: 2px dashed #88a4ff;
+            background: rgba(136, 164, 255, 0.1);
+            min-height: 80px;
+            margin-bottom: 12px;
+            border-radius: 12px;
+        }
+
+        .stop-section {
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .stop-section.dragging {
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
     </style>
 </head>
@@ -910,6 +992,7 @@
                 }
                 html += '<div class="stop-section" data-stop-container="' + escapeAttr(stop.id) + '">';
                 html += '<div class="stop-header">';
+                html += '<div class="drag-handle">⋮⋮</div>';
                 html += '<div class="stop-name">' + escapeHtml(stop.label || stop.name) + platformBadge + timeBadge + '</div>';
                 html += '<div class="stop-status">Loading...</div>';
                 html += '</div>';
@@ -917,6 +1000,12 @@
                 html += '</div>';
             }
             grid.innerHTML = html;
+
+            // Make items draggable
+            var sections = grid.querySelectorAll('.stop-section');
+            for (var j = 0; j < sections.length; j++) {
+                makeDraggable(sections[j], j, 'grid');
+            }
         }
 
         // Render stops config in modal
@@ -937,6 +1026,7 @@
                 var timeFrom = stop.timeFrom || 0;
                 var timeTo = stop.timeTo || 60;
                 html += '<div class="stop-config" data-stop-id="' + escapeAttr(stop.id) + '" data-stop-name="' + escapeAttr(stop.name) + '" data-stop-idx="' + i + '">';
+                html += '<div class="drag-handle">⋮⋮</div>';
                 html += '<button class="remove-btn" onclick="removeStopConfig(' + i + ')">×</button>';
                 html += '<div class="form-group">';
                 html += '<label>Display label</label>';
@@ -961,6 +1051,12 @@
                 html += '</div>';
             }
             container.innerHTML = html;
+
+            // Make items draggable
+            var configs = container.querySelectorAll('.stop-config');
+            for (var j = 0; j < configs.length; j++) {
+                makeDraggable(configs[j], j, 'config');
+            }
 
             // Fetch platforms for each existing stop
             for (var j = 0; j < config.stops.length; j++) {
@@ -1247,6 +1343,131 @@
         renderStopsGrid();
         fetchAllDepartures();
         startRefreshTimer();
+
+        // Drag and Drop System
+        var draggedItem = null;
+        var dragSource = null;
+        var touchStartY = 0;
+        var touchDragItem = null;
+
+        function makeDraggable(el, index, source) {
+            el.setAttribute('draggable', 'true');
+            el.setAttribute('data-dnd-index', index);
+            el.setAttribute('data-dnd-source', source);
+            el.classList.add('draggable');
+
+            el.addEventListener('dragstart', handleDragStart);
+            el.addEventListener('dragend', handleDragEnd);
+            el.addEventListener('dragover', handleDragOver);
+            el.addEventListener('drop', handleDrop);
+            el.addEventListener('dragenter', handleDragEnter);
+            el.addEventListener('dragleave', handleDragLeave);
+
+            el.addEventListener('touchstart', handleTouchStart, { passive: false });
+            el.addEventListener('touchmove', handleTouchMove, { passive: false });
+            el.addEventListener('touchend', handleTouchEnd);
+        }
+
+        function handleDragStart(e) {
+            draggedItem = this;
+            dragSource = this.dataset.dndSource;
+            e.dataTransfer.setData('text/plain', this.dataset.dndIndex);
+            e.dataTransfer.effectAllowed = 'move';
+            setTimeout(function() { this.classList.add('dragging'); }.bind(this), 0);
+        }
+
+        function handleDragEnd(e) {
+            this.classList.remove('dragging');
+            document.querySelectorAll('.drag-over').forEach(function(el) { el.classList.remove('drag-over'); });
+            draggedItem = null;
+            dragSource = null;
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+        }
+
+        function handleDragEnter(e) {
+            e.preventDefault();
+            if (this !== draggedItem) {
+                this.classList.add('drag-over');
+            }
+        }
+
+        function handleDragLeave(e) {
+            this.classList.remove('drag-over');
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            if (this === draggedItem) return;
+
+            var fromIdx = parseInt(e.dataTransfer.getData('text/plain'));
+            var toIdx = parseInt(this.dataset.dndIndex);
+
+            if (!isNaN(fromIdx) && !isNaN(toIdx) && fromIdx !== toIdx) {
+                reorderStops(fromIdx, toIdx, dragSource);
+            }
+        }
+
+        function handleTouchStart(e) {
+            touchDragItem = this;
+            var touch = e.touches[0];
+            touchStartY = touch.clientY;
+            this.classList.add('dragging');
+        }
+
+        function handleTouchMove(e) {
+            e.preventDefault();
+            if (!touchDragItem) return;
+
+            var touch = e.touches[0];
+            var target = document.elementFromPoint(touch.clientX, touch.clientY);
+            var dropTarget = target ? target.closest('.draggable') : null;
+
+            document.querySelectorAll('.drag-over').forEach(function(el) { el.classList.remove('drag-over'); });
+
+            if (dropTarget && dropTarget !== touchDragItem) {
+                dropTarget.classList.add('drag-over');
+            }
+        }
+
+        function handleTouchEnd(e) {
+            if (!touchDragItem) return;
+
+            var touch = e.changedTouches[0];
+            var target = document.elementFromPoint(touch.clientX, touch.clientY);
+            var dropTarget = target ? target.closest('.draggable') : null;
+
+            if (dropTarget && dropTarget !== touchDragItem) {
+                var fromIdx = parseInt(touchDragItem.dataset.dndIndex);
+                var toIdx = parseInt(dropTarget.dataset.dndIndex);
+                if (!isNaN(fromIdx) && !isNaN(toIdx) && fromIdx !== toIdx) {
+                    reorderStops(fromIdx, toIdx, touchDragItem.dataset.dndSource);
+                }
+            }
+
+            touchDragItem.classList.remove('dragging');
+            document.querySelectorAll('.drag-over').forEach(function(el) { el.classList.remove('drag-over'); });
+            touchDragItem = null;
+        }
+
+        function reorderStops(fromIdx, toIdx, source) {
+            var item = config.stops.splice(fromIdx, 1)[0];
+            config.stops.splice(toIdx, 0, item);
+
+            localStorage.setItem('departures_config_v3', JSON.stringify(config));
+
+            if (source === 'config') {
+                renderStopsConfig();
+            } else {
+                renderStopsGrid();
+                fetchAllDepartures();
+            }
+        }
     </script>
 </body>
 </html>
