@@ -591,18 +591,28 @@
         }
 
         .toggle-btn {
-            display: inline-block;
-            width: 24px;
-            height: 24px;
+            display: -webkit-flex;
+            display: flex;
+            -webkit-align-items: center;
+            align-items: center;
+            -webkit-justify-content: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
             text-align: center;
-            line-height: 24px;
             cursor: pointer;
-            font-size: 0.8rem;
-            color: #666;
+            font-size: 1.2rem;
+            color: #888;
+            background: rgba(255,255,255,0.05);
+            border-radius: 8px;
             transform: rotate(0deg);
             -webkit-transform: rotate(0deg);
             transition: transform 0.3s ease;
             -webkit-transition: -webkit-transform 0.3s ease;
+        }
+        .toggle-btn:hover {
+            background: rgba(255,255,255,0.1);
+            color: #aaa;
         }
         .toggle-btn.collapsed {
             transform: rotate(-90deg);
@@ -620,6 +630,32 @@
         }
         .collapsed-indicator:hover {
             background: #16213e;
+        }
+
+        .settings-btn {
+            position: relative;
+        }
+        .collapsed-badge {
+            position: absolute;
+            top: -6px;
+            right: -6px;
+            background: #ef4444;
+            color: #fff;
+            font-size: 0.7rem;
+            font-weight: bold;
+            min-width: 20px;
+            height: 20px;
+            border-radius: 10px;
+            display: none;
+            -webkit-align-items: center;
+            align-items: center;
+            -webkit-justify-content: center;
+            justify-content: center;
+            border: 2px solid #1a1a2e;
+        }
+        .collapsed-badge.visible {
+            display: -webkit-flex;
+            display: flex;
         }
 
         .btn-collapse {
@@ -654,7 +690,10 @@
         </div>
     </div>
 
-    <button class="settings-btn" id="settingsBtn" onclick="openModal()">⚙</button>
+    <button class="settings-btn" id="settingsBtn" onclick="openModal()">
+        <span style="font-size: 1.5rem;">⚙</span>
+        <span class="collapsed-badge" id="collapsedBadge">0</span>
+    </button>
 
     <div class="modal" id="modal">
         <div class="modal-content">
@@ -1117,12 +1156,10 @@
                 html += '</div>';
             }
 
-            if (collapsedCount > 0) {
-                var visibleCount = config.stops.length - collapsedCount;
-                html = '<div class="collapsed-indicator" onclick="openModal()">Showing ' + visibleCount + ' of ' + config.stops.length + ' stops (' + collapsedCount + ' hidden) - Tap to manage</div>' + html;
-            }
-
             grid.innerHTML = html;
+
+            // Update collapsed badge on settings button
+            updateCollapsedBadge();
 
             // Make items draggable
             var sections = grid.querySelectorAll('.stop-section');
@@ -1181,6 +1218,9 @@
                 makeDraggable(configs[j], j, 'config');
             }
 
+            // Update collapsed badge
+            updateCollapsedBadge();
+
             // Fetch platforms for each existing stop
             for (var j = 0; j < config.stops.length; j++) {
                 (function(idx, stop) {
@@ -1230,7 +1270,10 @@
         // Remove stop config
         function removeStopConfig(idx) {
             config.stops.splice(idx, 1);
+            localStorage.setItem('departures_config_v3', JSON.stringify(config));
             renderStopsConfig();
+            renderStopsGrid();
+            fetchAllDepartures();
         }
 
         // Handle stop search input
@@ -1611,6 +1654,22 @@
                 dragOvers[i].classList.remove('drag-over');
             }
             touchDragItem = null;
+        }
+
+        function updateCollapsedBadge() {
+            var count = 0;
+            for (var i = 0; i < config.stops.length; i++) {
+                if (config.stops[i].collapsed) count++;
+            }
+            var badge = document.getElementById('collapsedBadge');
+            if (badge) {
+                badge.textContent = count;
+                if (count > 0) {
+                    badge.classList.add('visible');
+                } else {
+                    badge.classList.remove('visible');
+                }
+            }
         }
 
         function reorderStops(fromIdx, toIdx, source) {
