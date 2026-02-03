@@ -1549,7 +1549,8 @@
             dragSource = this.getAttribute('data-dnd-source');
             e.dataTransfer.setData('text/plain', this.getAttribute('data-dnd-index'));
             e.dataTransfer.effectAllowed = 'move';
-            setTimeout(function() { this.classList.add('dragging'); }, 0);
+            var self = this;
+            setTimeout(function() { self.classList.add('dragging'); }, 0);
         }
 
         function handleDragEnd(e) {
